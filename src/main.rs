@@ -75,7 +75,7 @@ async fn main() {
             return;
         }
         Some(Commands::Login) => {
-            login(&config);
+            login(&config).await;
             Ok(())
         }
         Some(Commands::Logout) => {

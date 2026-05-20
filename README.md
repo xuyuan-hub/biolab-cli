@@ -73,7 +73,7 @@ cargo build --release
 #### Configure & Use
 
 ```bash
-# 1. Login (opens browser for Feishu OAuth)
+# 1. Login (outputs a verification URL — open in any browser)
 biolab login
 
 # 2. Verify
@@ -98,7 +98,7 @@ If not logged in, proceed to Step 2.
 
 **Step 2 — Login**
 
-> Run `biolab login`. It opens a browser for OAuth. If the user is on a remote terminal (WSL/SSH), the browser may not reach the callback server. In that case, let the user run `biolab login` in their own local terminal, or extract the callback URL and write the token manually.
+> Run `biolab login`. It outputs an auth URL. Send the URL to the user to open in their browser. After the user authorizes, the CLI automatically polls the token endpoint and saves the token.
 
 ```bash
 biolab login
@@ -149,8 +149,8 @@ When asked to create an order, the Agent follows this sequence:
 
 | Command | Description |
 |---------|-------------|
-| `login` | Feishu OAuth login (opens browser, callback server on localhost) |
-| `logout` | Remove local token (`~/.biolab_token`) |
+| `login` | Custom CLI poll flow — outputs auth URL, polls for JWT |
+| `logout` | Remove local token from the OS keychain and delete any legacy `~/.biolab_token` file |
 | `status` | Show current login status |
 
 ```bash
@@ -164,7 +164,7 @@ biolab status
 biolab logout
 ```
 
-Token is stored at `~/.biolab_token`, valid for 8 days. Override with `BIOLAB_TOKEN` env var.
+Token is stored in the OS keychain by default and is valid for 8 days. `BIOLAB_TOKEN` can override it for CI or temporary sessions. Legacy `~/.biolab_token` files are migrated into the keychain when possible; plaintext file storage is disabled unless `BIOLAB_INSECURE_TOKEN_FILE=1` is explicitly set in a trusted headless environment.
 
 ## Command System
 
@@ -306,7 +306,7 @@ Please fully understand all usage risks. By using this tool, you are deemed to v
 | Setting | Default | Override |
 |---------|---------|----------|
 | API Base URL | `http://8.136.56.203/api/v1` | `BIOLAB_BASE_URL` env var |
-| Token | `~/.biolab_token` | `BIOLAB_TOKEN` env var |
+| Token | OS keychain | `BIOLAB_TOKEN` env var; legacy `~/.biolab_token` migration; `BIOLAB_INSECURE_TOKEN_FILE=1` for explicit plaintext fallback |
 
 ## Architecture
 
@@ -453,7 +453,7 @@ biolab status
 
 **第二步 —— 登录**
 
-> 运行 `biolab login`，会打开浏览器进行 OAuth 授权。如果用户通过远程终端（WSL/SSH）访问，浏览器可能无法访问回调服务器。此时让用户在**自己的本地终端**中运行 `biolab login`，或从回调 URL 中提取 token 手动写入。
+> 运行 `biolab login`，会打印一个认证 URL。将 URL 发给用户在浏览器中打开，授权后 CLI 自动轮询获取 token 并保存。无论本地或远程终端均可正常工作。
 
 ```bash
 biolab login
@@ -511,8 +511,8 @@ Agent skill 参考文档位于 `.claude/skills/biolab-api/references/`。
 
 | 命令 | 描述 |
 |------|------|
-| `login` | 飞书 OAuth 登录（打开浏览器，本地回调服务器） |
-| `logout` | 删除本地 token（`~/.biolab_token`） |
+| `login` | 自定义 CLI 轮询流程 — 输出认证 URL，轮询获取 JWT |
+| `logout` | 删除 OS 密钥链中的本地 token，并清理遗留 `~/.biolab_token` 文件 |
 | `status` | 显示当前登录状态 |
 
 ```bash
@@ -526,7 +526,7 @@ biolab status
 biolab logout
 ```
 
-Token 存储在 `~/.biolab_token`，有效期 8 天。可通过 `BIOLAB_TOKEN` 环境变量覆盖。
+Token 默认存储在 OS 密钥链中，有效期 8 天。可通过 `BIOLAB_TOKEN` 环境变量覆盖。遗留 `~/.biolab_token` 文件会尽量迁移到密钥链；明文文件存储默认关闭，只有在可信 headless 环境中显式设置 `BIOLAB_INSECURE_TOKEN_FILE=1` 才会启用。
 
 ## 命令系统
 
@@ -668,7 +668,7 @@ biolab inventory stats -f json
 | 配置项 | 默认值 | 环境变量覆盖 |
 |--------|--------|-------------|
 | API 地址 | `http://8.136.56.203/api/v1` | `BIOLAB_BASE_URL` |
-| Token | `~/.biolab_token` | `BIOLAB_TOKEN` |
+| Token | OS 密钥链 | `BIOLAB_TOKEN`；遗留 `~/.biolab_token` 迁移；显式 `BIOLAB_INSECURE_TOKEN_FILE=1` 明文回退 |
 
 ## 架构
 

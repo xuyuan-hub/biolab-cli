@@ -27,7 +27,7 @@ biolab login
 biolab status
 ```
 
-The access token is loaded from `BIOLAB_TOKEN` first, then from `~/.biolab_token`.
+The access token is loaded from `BIOLAB_TOKEN` first, then from the OS keychain. Legacy `~/.biolab_token` files are migrated into the keychain when possible; plaintext token files require explicit `BIOLAB_INSECURE_TOKEN_FILE=1`.
 The API base URL defaults to `http://8.136.56.203/api/v1` and can be overridden with `BIOLAB_BASE_URL`.
 
 ## Agent Rules

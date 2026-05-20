@@ -11,7 +11,10 @@ impl BiolabClient {
     }
 
     pub async fn create_lab(&self, name: &str) -> Result<Lab, BiolabError> {
-        let resp: serde_json::Value = self.http.post("/lab/create", &single_field_body("name", name)).await?;
+        let resp: serde_json::Value = self
+            .http
+            .post("/lab/create", &single_field_body("name", name))
+            .await?;
         extract_object(resp)
     }
 
@@ -30,7 +33,10 @@ impl BiolabClient {
         user_id: &str,
         role: &str,
     ) -> Result<serde_json::Value, BiolabError> {
-        let resp: serde_json::Value = self.http.patch(&member_path(user_id), &single_field_body("role", role)).await?;
+        let resp: serde_json::Value = self
+            .http
+            .patch(&member_path(user_id), &single_field_body("role", role))
+            .await?;
         Ok(envelope_data(resp))
     }
 
@@ -44,7 +50,10 @@ impl BiolabClient {
         email: &str,
         role: &str,
     ) -> Result<serde_json::Value, BiolabError> {
-        let resp: serde_json::Value = self.http.post("/lab/invite", &invite_body(email, role)).await?;
+        let resp: serde_json::Value = self
+            .http
+            .post("/lab/invite", &invite_body(email, role))
+            .await?;
         Ok(envelope_data(resp))
     }
 
@@ -86,7 +95,10 @@ impl BiolabClient {
         lab_id: &str,
         role: &str,
     ) -> Result<serde_json::Value, BiolabError> {
-        let resp: serde_json::Value = self.http.post(&join_lab_path(lab_id), &single_field_body("role", role)).await?;
+        let resp: serde_json::Value = self
+            .http
+            .post(&join_lab_path(lab_id), &single_field_body("role", role))
+            .await?;
         Ok(envelope_data(resp))
     }
 

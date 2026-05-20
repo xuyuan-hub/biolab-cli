@@ -45,11 +45,11 @@ Cargo.toml          # Rust project, binary: biolab, lib: biolab
 src/
 ├── main.rs         # Thin CLI entry — imports from lib crate, clap router
 ├── lib.rs          # ALL mod declarations here; binary imports via biolab::...
-├── config.rs       # Token management (env → file → OAuth), base URL
+├── config.rs       # Token management (env → keyring → legacy migration), base URL
 ├── client.rs       # BiolabClient factory, re-exports BiolabError
 ├── errors.rs       # BiolabError enum (thiserror)
 ├── types.rs        # Serde request/response structs + custom deserializers
-├── auth.rs         # Feishu OAuth login flow (tiny_http callback server)
+├── auth.rs         # Feishu OAuth login (custom CLI poll flow)
 ├── output.rs       # Formatting: JSON (--format json) vs colored text
 ├── http.rs         # Raw HTTP methods: get/post/patch/put/delete/upload/download
 ├── api_response.rs # Response envelope unwrapping (data/items/results)
@@ -71,8 +71,8 @@ src/
 
 ### Key Patterns
 
-- **Credential chain**: `BIOLAB_TOKEN` env var → `~/.biolab_token` file → interactive OAuth
-- **Token storage**: `~/.biolab_token`, valid 8 days
+- **Credential chain**: `BIOLAB_TOKEN` env var → OS keyring → legacy `~/.biolab_token` migration → OAuth poll
+- **Token storage**: OS keyring by default, valid 8 days; plaintext file fallback requires explicit `BIOLAB_INSECURE_TOKEN_FILE=1`
 - **Module ownership**: All `mod` declarations live in `lib.rs`; `main.rs` imports from `biolab::...` (the library crate). This avoids the binary crate's `crate::` resolving differently from the library's `crate::`
 - **HTTP client**: `BiolabHttp` (in `http.rs`) wraps reqwest with Bearer token injection; `api_response.rs` provides `extract_array`/`extract_object`/`envelope_data` for response unwrapping
 - **Domain services**: `impl BiolabClient` blocks in `services/*.rs` call `self.http.get/post/...` then `extract_array`/`extract_object` — all methods unwrap the `{ "data": ... }` envelope consistently

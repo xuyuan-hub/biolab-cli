@@ -1,14 +1,20 @@
-use std::net::TcpListener;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use tiny_http::{Header, Response, Server};
+use reqwest::Client;
+use serde::Deserialize;
 
 use crate::config::Config;
 
+/// Response from POST /feishu/cli-auth.
+#[derive(Deserialize)]
+pub struct CliAuthResponse {
+    pub auth_url: String,
+    pub poll_key: String,
+}
+
 pub fn check_status(config: &Config) -> bool {
     let Some(token) = config.load_token() else {
-        println!("未登录（无 token 文件）");
+        println!("未登录（未找到可用 token）");
         return false;
     };
     let url = format!("{}/users/me", config.base_url);
@@ -38,7 +44,7 @@ pub fn check_status(config: &Config) -> bool {
     }
 }
 
-pub fn login(config: &Config) -> bool {
+pub async fn login(config: &Config) -> bool {
     if config.load_token().is_some() {
         println!("已有 token，尝试验证...");
         if check_status(config) {
@@ -49,89 +55,114 @@ pub fn login(config: &Config) -> bool {
         println!("Token 已过期，开始重新认证...\n");
     }
 
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to port");
-    let port = listener
-        .local_addr()
-        .expect("Failed to get local addr")
-        .port();
+    let client = Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .expect("failed to build HTTP client");
 
-    let callback_url = format!("http://localhost:{port}/callback");
-    let encoded_callback =
-        url::form_urlencoded::byte_serialize(callback_url.as_bytes()).collect::<String>();
-    let auth_url = format!(
-        "{}/feishu/authorize?redirect={}",
-        config.base_url, encoded_callback
-    );
+    // Step 1: Get auth URL + poll key from backend
+    match request_cli_auth(&client, config).await {
+        Ok(resp) => {
+            println!("\n{}", "=".repeat(55));
+            println!("  请在浏览器中打开以下链接完成飞书认证：");
+            println!("\n    {}\n", resp.auth_url);
+            println!("  等待认证完成，每 2 秒检查一次…");
+            println!("{}\n", "=".repeat(55));
 
-    let received_token: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
-    let config_clone = config.clone();
-    let token_clone = Arc::clone(&received_token);
-
-    let server = Server::from_listener(listener, None).expect("Failed to create server");
-
-    println!("\n{}", "=".repeat(55));
-    println!("  请在浏览器中打开以下链接完成飞书认证：");
-    println!("\n    {auth_url}\n");
-    println!("  等待认证完成（最多 2 分钟），每 5 秒打印 .");
-    println!("{}\n", "=".repeat(55));
-
-    let start = Instant::now();
-
-    for request in server.incoming_requests() {
-        let url_str = request.url().to_string();
-        if url_str.starts_with("/callback") {
-            if let Some(query) = url_str.split('?').nth(1) {
-                for pair in query.split('&') {
-                    if let Some((key, value)) = pair.split_once('=') {
-                        if key == "token" {
-                            *token_clone.lock().unwrap() = Some(value.to_string());
-                            break;
-                        }
+            // Step 2: Poll for JWT
+            match poll_jwt(&client, config, &resp.poll_key).await {
+                Ok(token) => {
+                    if let Err(e) = config.save_token(&token) {
+                        eprintln!("保存 token 失败: {e}");
+                        return false;
                     }
+                    println!("认证成功！Token 已保存到系统凭据库");
+                    check_status(config)
+                }
+                Err(e) => {
+                    eprintln!("认证失败: {e}");
+                    false
                 }
             }
-
-            let response = Response::from_string(
-                "<html><body style='font-family:sans-serif;text-align:center;padding-top:3em'>\
-                 <h2>Login Successful</h2>\
-                 <p>Token has been saved. You may close this window.</p>\
-                 </body></html>",
-            )
-            .with_header(Header::from_bytes("Content-Type", "text/html; charset=utf-8").unwrap());
-            let _ = request.respond(response);
-        } else {
-            let _ = request.respond(Response::empty(204));
         }
-
-        if token_clone.lock().unwrap().is_some() {
-            break;
-        }
-
-        if start.elapsed() > Duration::from_secs(120) {
-            break;
-        }
-
-        if start.elapsed().as_secs() % 5 == 0 {
-            print!(".");
-            use std::io::Write;
-            let _ = std::io::stdout().flush();
+        Err(e) => {
+            eprintln!("请求认证失败: {e}");
+            false
         }
     }
+}
 
-    println!();
+/// Request an auth URL and poll key from the backend.
+async fn request_cli_auth(
+    client: &Client,
+    config: &Config,
+) -> Result<CliAuthResponse, Box<dyn std::error::Error + Send + Sync>> {
+    let url = format!("{}/feishu/cli-auth", config.base_url);
+    let resp = client
+        .post(&url)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body("{}")
+        .send()
+        .await?;
 
-    let token = received_token.lock().unwrap().take();
-    if let Some(token) = token {
-        if let Err(e) = config_clone.save_token(&token) {
-            eprintln!("保存 token 失败: {}", e);
-            return false;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("HTTP {status}: {body}").into());
+    }
+
+    let data: CliAuthResponse = resp.json().await?;
+    Ok(data)
+}
+
+/// Poll the token endpoint until the user authorizes or we time out.
+async fn poll_jwt(
+    client: &Client,
+    config: &Config,
+    poll_key: &str,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let token_url = format!("{}/feishu/cli-token", config.base_url);
+    let timeout = Duration::from_secs(300); // 5 minutes
+    let deadline = std::time::Instant::now() + timeout;
+    let interval = Duration::from_secs(2);
+
+    loop {
+        tokio::time::sleep(interval).await;
+
+        if std::time::Instant::now() >= deadline {
+            return Err("认证超时，用户未在 5 分钟内完成授权".into());
         }
-        println!("认证成功！Token 已保存到 ~/.biolab_token");
-        check_status(&config_clone)
-    } else {
-        println!("\n认证超时（超过 2 分钟未收到回调）。");
-        println!("请重新运行 `biolab login` 并在浏览器中打开授权链接。");
-        false
+
+        let resp = client
+            .post(&token_url)
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body(serde_json::json!({ "poll_key": poll_key }).to_string())
+            .send()
+            .await?;
+
+        let body: serde_json::Value = resp.json().await?;
+
+        // Success: token received
+        if body.get("status").and_then(|v| v.as_str()) == Some("success") {
+            if let Some(token) = body.get("access_token").and_then(|v| v.as_str()) {
+                return Ok(token.to_string());
+            }
+        }
+
+        // Error: backend returned a failure
+        if body.get("status").and_then(|v| v.as_str()) == Some("error") {
+            let detail = body
+                .get("detail")
+                .and_then(|v| v.as_str())
+                .unwrap_or("未知错误");
+            return Err(format!("后端返回错误: {detail}").into());
+        }
+
+        // Still waiting — keep polling
+        print!(".");
+        use std::io::Write;
+        let _ = std::io::stdout().flush();
+        continue;
     }
 }
 
