@@ -19,13 +19,30 @@ impl BiolabClient {
         new: &str,
     ) -> Result<serde_json::Value, BiolabError> {
         self.http
-            .patch(
-                "/users/me/password",
-                &serde_json::json!({
-                    "current_password": current,
-                    "new_password": new,
-                }),
-            )
+            .patch("/users/me/password", &password_change_body(current, new))
             .await
+    }
+}
+
+fn password_change_body(current: &str, new: &str) -> serde_json::Value {
+    serde_json::json!({
+        "current_password": current,
+        "new_password": new,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builds_password_change_body() {
+        assert_eq!(
+            password_change_body("old", "new"),
+            serde_json::json!({
+                "current_password": "old",
+                "new_password": "new",
+            })
+        );
     }
 }

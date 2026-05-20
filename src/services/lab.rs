@@ -9,10 +9,7 @@ impl BiolabClient {
     }
 
     pub async fn create_lab(&self, name: &str) -> Result<Lab, BiolabError> {
-        let resp: serde_json::Value = self
-            .http
-            .post("/lab/create", &serde_json::json!({ "name": name }))
-            .await?;
+        let resp: serde_json::Value = self.http.post("/lab/create", &name_body(name)).await?;
         extract_object(resp)
     }
 
@@ -32,15 +29,12 @@ impl BiolabClient {
         role: &str,
     ) -> Result<serde_json::Value, BiolabError> {
         self.http
-            .patch(
-                &format!("/lab/members/{user_id}"),
-                &serde_json::json!({ "role": role }),
-            )
+            .patch(&member_path(user_id), &role_body(role))
             .await
     }
 
     pub async fn remove_member(&self, user_id: &str) -> Result<serde_json::Value, BiolabError> {
-        self.http.delete(&format!("/lab/members/{user_id}")).await
+        self.http.delete(&member_path(user_id)).await
     }
 
     pub async fn invite_member(
@@ -49,10 +43,7 @@ impl BiolabClient {
         role: &str,
     ) -> Result<serde_json::Value, BiolabError> {
         self.http
-            .post(
-                "/lab/invite",
-                &serde_json::json!({ "email": email, "role": role }),
-            )
+            .post("/lab/invite", &invite_body(email, role))
             .await
     }
 
@@ -67,8 +58,8 @@ impl BiolabClient {
     ) -> Result<serde_json::Value, BiolabError> {
         self.http
             .post(
-                &format!("/lab/invitations/{invitation_id}/accept"),
-                &serde_json::json!({}),
+                &invitation_action_path(invitation_id, "accept"),
+                &empty_body(),
             )
             .await
     }
@@ -79,8 +70,8 @@ impl BiolabClient {
     ) -> Result<serde_json::Value, BiolabError> {
         self.http
             .post(
-                &format!("/lab/invitations/{invitation_id}/decline"),
-                &serde_json::json!({}),
+                &invitation_action_path(invitation_id, "decline"),
+                &empty_body(),
             )
             .await
     }
@@ -91,10 +82,7 @@ impl BiolabClient {
         role: &str,
     ) -> Result<serde_json::Value, BiolabError> {
         self.http
-            .post(
-                &format!("/lab/join/{lab_id}"),
-                &serde_json::json!({ "role": role }),
-            )
+            .post(&join_lab_path(lab_id), &role_body(role))
             .await
     }
 
@@ -108,19 +96,13 @@ impl BiolabClient {
         app_id: &str,
     ) -> Result<serde_json::Value, BiolabError> {
         self.http
-            .post(
-                &format!("/lab/applications/{app_id}/approve"),
-                &serde_json::json!({}),
-            )
+            .post(&application_action_path(app_id, "approve"), &empty_body())
             .await
     }
 
     pub async fn reject_application(&self, app_id: &str) -> Result<serde_json::Value, BiolabError> {
         self.http
-            .post(
-                &format!("/lab/applications/{app_id}/reject"),
-                &serde_json::json!({}),
-            )
+            .post(&application_action_path(app_id, "reject"), &empty_body())
             .await
     }
 
@@ -141,8 +123,85 @@ impl BiolabClient {
         &self,
         rule_id: &str,
     ) -> Result<serde_json::Value, BiolabError> {
-        self.http
-            .delete(&format!("/lab/approval-rules/{rule_id}"))
-            .await
+        self.http.delete(&approval_rule_path(rule_id)).await
+    }
+}
+
+fn name_body(name: &str) -> serde_json::Value {
+    serde_json::json!({ "name": name })
+}
+
+fn role_body(role: &str) -> serde_json::Value {
+    serde_json::json!({ "role": role })
+}
+
+fn invite_body(email: &str, role: &str) -> serde_json::Value {
+    serde_json::json!({ "email": email, "role": role })
+}
+
+fn empty_body() -> serde_json::Value {
+    serde_json::json!({})
+}
+
+fn member_path(user_id: &str) -> String {
+    format!("/lab/members/{user_id}")
+}
+
+fn invitation_action_path(invitation_id: &str, action: &str) -> String {
+    format!("/lab/invitations/{invitation_id}/{action}")
+}
+
+fn join_lab_path(lab_id: &str) -> String {
+    format!("/lab/join/{lab_id}")
+}
+
+fn application_action_path(app_id: &str, action: &str) -> String {
+    format!("/lab/applications/{app_id}/{action}")
+}
+
+fn approval_rule_path(rule_id: &str) -> String {
+    format!("/lab/approval-rules/{rule_id}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builds_lab_bodies() {
+        assert_eq!(name_body("BioLab"), serde_json::json!({ "name": "BioLab" }));
+        assert_eq!(role_body("admin"), serde_json::json!({ "role": "admin" }));
+        assert_eq!(
+            invite_body("pi@example.com", "member"),
+            serde_json::json!({ "email": "pi@example.com", "role": "member" })
+        );
+        assert_eq!(empty_body(), serde_json::json!({}));
+    }
+
+    #[test]
+    fn builds_lab_member_and_join_paths() {
+        assert_eq!(member_path("user-1"), "/lab/members/user-1");
+        assert_eq!(join_lab_path("lab-1"), "/lab/join/lab-1");
+        assert_eq!(approval_rule_path("rule-1"), "/lab/approval-rules/rule-1");
+    }
+
+    #[test]
+    fn builds_invitation_and_application_action_paths() {
+        assert_eq!(
+            invitation_action_path("inv-1", "accept"),
+            "/lab/invitations/inv-1/accept"
+        );
+        assert_eq!(
+            invitation_action_path("inv-1", "decline"),
+            "/lab/invitations/inv-1/decline"
+        );
+        assert_eq!(
+            application_action_path("app-1", "approve"),
+            "/lab/applications/app-1/approve"
+        );
+        assert_eq!(
+            application_action_path("app-1", "reject"),
+            "/lab/applications/app-1/reject"
+        );
     }
 }

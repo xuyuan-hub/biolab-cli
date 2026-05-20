@@ -9,10 +9,7 @@ impl BiolabClient {
     }
 
     pub async fn get_template(&self, id: &str) -> Result<Template, BiolabError> {
-        let resp: serde_json::Value = self
-            .http
-            .get(&format!("/order-info-templates/{id}"))
-            .await?;
+        let resp: serde_json::Value = self.http.get(&template_path(id)).await?;
         extract_object(resp)
     }
 
@@ -20,12 +17,7 @@ impl BiolabClient {
         &self,
         order_type: Option<&str>,
     ) -> Result<Template, BiolabError> {
-        let qs = if let Some(ot) = order_type {
-            format!("/order-info-templates/default?order_type={ot}")
-        } else {
-            "/order-info-templates/default".to_string()
-        };
-        let resp: serde_json::Value = self.http.get(&qs).await?;
+        let resp: serde_json::Value = self.http.get(&default_template_path(order_type)).await?;
         extract_object(resp)
     }
 
@@ -39,25 +31,63 @@ impl BiolabClient {
         id: &str,
         data: &serde_json::Value,
     ) -> Result<Template, BiolabError> {
-        let resp: serde_json::Value = self
-            .http
-            .put(&format!("/order-info-templates/{id}"), data)
-            .await?;
+        let resp: serde_json::Value = self.http.put(&template_path(id), data).await?;
         extract_object(resp)
     }
 
     pub async fn delete_template(&self, id: &str) -> Result<serde_json::Value, BiolabError> {
-        self.http
-            .delete(&format!("/order-info-templates/{id}"))
-            .await
+        self.http.delete(&template_path(id)).await
     }
 
     pub async fn set_default_template(&self, id: &str) -> Result<serde_json::Value, BiolabError> {
         self.http
-            .post(
-                &format!("/order-info-templates/{id}/set-default"),
-                &serde_json::json!({}),
-            )
+            .post(&set_default_template_path(id), &serde_json::json!({}))
             .await
+    }
+}
+
+fn template_path(id: &str) -> String {
+    format!("/order-info-templates/{id}")
+}
+
+fn default_template_path(order_type: Option<&str>) -> String {
+    if let Some(order_type) = order_type {
+        format!(
+            "/order-info-templates/default?order_type={}",
+            url_encode(order_type)
+        )
+    } else {
+        "/order-info-templates/default".to_string()
+    }
+}
+
+fn set_default_template_path(id: &str) -> String {
+    format!("/order-info-templates/{id}/set-default")
+}
+
+fn url_encode(s: &str) -> String {
+    url::form_urlencoded::byte_serialize(s.as_bytes()).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builds_template_paths() {
+        assert_eq!(template_path("tpl-1"), "/order-info-templates/tpl-1");
+        assert_eq!(
+            set_default_template_path("tpl-1"),
+            "/order-info-templates/tpl-1/set-default"
+        );
+    }
+
+    #[test]
+    fn builds_default_template_path() {
+        assert_eq!(default_template_path(None), "/order-info-templates/default");
+        assert_eq!(
+            default_template_path(Some("primer synthesis")),
+            "/order-info-templates/default?order_type=primer+synthesis"
+        );
     }
 }

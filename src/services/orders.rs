@@ -4,15 +4,12 @@ use crate::types::{CreatePrimerOrder, CreateSequencingOrder, Order};
 
 impl BiolabClient {
     pub async fn list_orders(&self, skip: u32, limit: u32) -> Result<Vec<Order>, BiolabError> {
-        let resp: serde_json::Value = self
-            .http
-            .get(&format!("/orders/?skip={skip}&limit={limit}"))
-            .await?;
+        let resp: serde_json::Value = self.http.get(&list_orders_path(skip, limit)).await?;
         extract_array(resp)
     }
 
     pub async fn get_order(&self, order_id: &str) -> Result<Order, BiolabError> {
-        let resp: serde_json::Value = self.http.get(&format!("/orders/{order_id}")).await?;
+        let resp: serde_json::Value = self.http.get(&order_path(order_id)).await?;
         extract_object(resp)
     }
 
@@ -37,22 +34,19 @@ impl BiolabClient {
         order_id: &str,
         data: &serde_json::Value,
     ) -> Result<Order, BiolabError> {
-        let resp: serde_json::Value = self
-            .http
-            .patch(&format!("/orders/{order_id}"), data)
-            .await?;
+        let resp: serde_json::Value = self.http.patch(&order_path(order_id), data).await?;
         extract_object(resp)
     }
 
     pub async fn resend_order(&self, order_id: &str) -> Result<serde_json::Value, BiolabError> {
         self.http
-            .post(&format!("/orders/{order_id}/send"), &serde_json::json!({}))
+            .post(&resend_order_path(order_id), &serde_json::json!({}))
             .await
     }
 
     pub async fn download_order(&self, order_id: &str) -> Result<Vec<u8>, BiolabError> {
         self.http
-            .download_bytes(&format!("/orders/{order_id}/download"))
+            .download_bytes(&download_order_path(order_id))
             .await
     }
 
@@ -82,5 +76,38 @@ impl BiolabClient {
         self.http
             .upload_file("/orders/sequencing/upload-excel", file_path)
             .await
+    }
+}
+
+fn list_orders_path(skip: u32, limit: u32) -> String {
+    format!("/orders/?skip={skip}&limit={limit}")
+}
+
+fn order_path(order_id: &str) -> String {
+    format!("/orders/{order_id}")
+}
+
+fn resend_order_path(order_id: &str) -> String {
+    format!("/orders/{order_id}/send")
+}
+
+fn download_order_path(order_id: &str) -> String {
+    format!("/orders/{order_id}/download")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builds_order_collection_path_with_pagination() {
+        assert_eq!(list_orders_path(20, 50), "/orders/?skip=20&limit=50");
+    }
+
+    #[test]
+    fn builds_order_detail_and_action_paths() {
+        assert_eq!(order_path("ord_123"), "/orders/ord_123");
+        assert_eq!(resend_order_path("ord_123"), "/orders/ord_123/send");
+        assert_eq!(download_order_path("ord_123"), "/orders/ord_123/download");
     }
 }
