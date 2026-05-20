@@ -1,0 +1,124 @@
+---
+name: biolab-api
+version: 0.1.0
+description: "Use when operating the Biolab lab management CLI for primer synthesis, sequencing orders, inventory, templates, lab members, or account status."
+metadata:
+  requires:
+    bins: ["biolab"]
+  cliHelp: "biolab --help"
+---
+
+# Biolab CLI Skill
+
+This skill teaches an AI agent how to use the `biolab` command line tool safely and reliably.
+
+## Setup
+
+Check whether the CLI is available:
+
+```bash
+biolab --help
+```
+
+Authenticate with Feishu OAuth before making API calls:
+
+```bash
+biolab login
+biolab status
+```
+
+The access token is loaded from `BIOLAB_TOKEN` first, then from `~/.biolab_token`.
+The API base URL defaults to `http://8.136.56.203/api/v1` and can be overridden with `BIOLAB_BASE_URL`.
+
+## Agent Rules
+
+- Prefer `-f json` when the next step needs machine parsing.
+- Do not print tokens or secrets.
+- For write operations, confirm the user's intent first when the request is destructive or changes shared lab state.
+- If a command fails because login is missing or expired, run `biolab login` and ask the user to complete the browser flow.
+- Use command help before guessing flags: `biolab <domain> --help`.
+- Before complex domain work, read the matching reference file:
+  - Orders: `references/orders.md`
+  - Inventory: `references/inventory.md`
+  - Templates: `references/templates.md`
+  - Lab: `references/lab.md`
+  - Users: `references/users.md`
+
+## Common Commands
+
+Account:
+
+```bash
+biolab me -f json
+biolab me update '{"phone_number":"13800000000"}'
+biolab logout
+```
+
+Orders:
+
+```bash
+biolab orders list -f json
+biolab orders get <ORDER_ID> -f json
+biolab orders create-primer order.json
+biolab orders create-sequencing order.json
+biolab orders download <ORDER_ID> order.xlsx
+biolab orders download-primer-template primer_template.xlsx
+biolab orders download-sequencing-template sequencing_template.xlsx
+```
+
+Inventory:
+
+```bash
+biolab inventory list -f json
+biolab inventory list --low-stock -f json
+biolab inventory checkin <STOCK_ID> --quantity 5 --purpose "restock"
+biolab inventory checkout <STOCK_ID> --quantity 2 --purpose "PCR"
+biolab inventory locations -f json
+```
+
+Templates:
+
+```bash
+biolab templates list -f json
+biolab templates get-default primer_synthesis -f json
+biolab templates set-default <TEMPLATE_ID>
+```
+
+Lab:
+
+```bash
+biolab lab info -f json
+biolab lab members -f json
+biolab lab invite <email> member
+```
+
+## Order Notes
+
+Primer synthesis orders use `primer_synthesis`. Sequencing orders use `sequencing`.
+The typical order status flow is:
+
+```text
+pending -> ordered -> received -> stored
+```
+
+When creating orders from JSON, inspect an existing order or use templates first so required customer, supplier, payment, and item fields match backend expectations.
+
+## Skill Maintenance
+
+Install or refresh this skill for local agent use from a project directory:
+
+```bash
+biolab skills install
+```
+
+Install globally for supported agents:
+
+```bash
+biolab skills install --scope global
+```
+
+Check whether installed skills match the running CLI version:
+
+```bash
+biolab skills check -f json
+```

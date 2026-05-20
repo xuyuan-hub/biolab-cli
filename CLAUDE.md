@@ -22,6 +22,10 @@ biolab --help
 biolab orders --help
 biolab inventory --help
 
+# Install AI agent skills for this project
+biolab skills install
+biolab skills check -f json
+
 # Login (Feishu OAuth)
 biolab login
 biolab status
@@ -61,6 +65,7 @@ src/
 - **HTTP client**: `BiolabClient` wraps reqwest with Bearer token injection, handles JSON responses with fallback to `data` envelope
 - **Output modes**: `-f json` for machine-readable, default text for human (colored status badges)
 - **Commands pattern**: Each `commands/*.rs` module defines clap subcommands + `run()` async function, called from `main.rs` dispatcher
+- **Agent skills**: `biolab skills install` copies the bundled `skills/biolab-api/SKILL.md` into `.claude/skills/biolab-api` and `.codex/skills/biolab-api`, then writes a version stamp for `biolab skills check`
 
 ### API Base URL
 
@@ -84,7 +89,7 @@ pending → ordered → received → stored
 Five workflow roles: `pi` > `procurement` > `finance` > `warehouse` > `member`
 
 ### Reference Docs
-Detailed API schemas are in `.claude/skills/biolab-api/references/`:
+Detailed API schemas are bundled in `skills/biolab-api/references/` and installed into `.claude/skills/biolab-api/references/`:
 - `orders.md` — Order schemas, status machine, supplier differences
 - `inventory.md` — Stock/checkin/checkout schemas
 - `templates.md` — Template fields for order defaults

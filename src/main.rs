@@ -3,16 +3,17 @@ use std::sync::Arc;
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 
-mod config;
+mod api_response;
 mod auth;
 mod client;
-mod types;
-mod output;
 mod commands;
+mod config;
+mod output;
+mod types;
 
+use commands::{inventory, lab, orders, skills, templates, users};
 use config::Config;
 use output::OutputFormat;
-use commands::{users, orders, templates, inventory, lab};
 
 /// Biolab CLI — 实验管理系统客户端
 #[derive(Parser)]
@@ -64,6 +65,9 @@ enum Commands {
 
     /// 课题组管理
     Lab(lab::LabArgs),
+
+    /// AI agent skill installation and checks
+    Skills(skills::SkillsArgs),
 }
 
 #[tokio::main]
@@ -98,6 +102,7 @@ async fn main() {
         Some(Commands::Templates(args)) => templates::run(&args, &config, &format).await,
         Some(Commands::Inventory(args)) => inventory::run(&args, &config, &format).await,
         Some(Commands::Lab(args)) => lab::run(&args, &config, &format).await,
+        Some(Commands::Skills(args)) => skills::run(&args, &format),
     };
 
     if let Err(e) = result {

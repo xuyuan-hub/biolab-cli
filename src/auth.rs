@@ -2,7 +2,7 @@ use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use tiny_http::{Server, Response, Header};
+use tiny_http::{Header, Response, Server};
 
 use crate::config::Config;
 
@@ -50,11 +50,18 @@ pub fn login(config: &Config) -> bool {
     }
 
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to port");
-    let port = listener.local_addr().expect("Failed to get local addr").port();
+    let port = listener
+        .local_addr()
+        .expect("Failed to get local addr")
+        .port();
 
     let callback_url = format!("http://localhost:{port}/callback");
-    let encoded_callback = url::form_urlencoded::byte_serialize(callback_url.as_bytes()).collect::<String>();
-    let auth_url = format!("{}/feishu/authorize?redirect={}", config.base_url, encoded_callback);
+    let encoded_callback =
+        url::form_urlencoded::byte_serialize(callback_url.as_bytes()).collect::<String>();
+    let auth_url = format!(
+        "{}/feishu/authorize?redirect={}",
+        config.base_url, encoded_callback
+    );
 
     let received_token: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
     let config_clone = config.clone();
@@ -89,9 +96,8 @@ pub fn login(config: &Config) -> bool {
                  <h2>Login Successful</h2>\
                  <p>Token has been saved. You may close this window.</p>\
                  </body></html>",
-            ).with_header(
-                Header::from_bytes("Content-Type", "text/html; charset=utf-8").unwrap(),
-            );
+            )
+            .with_header(Header::from_bytes("Content-Type", "text/html; charset=utf-8").unwrap());
             let _ = request.respond(response);
         } else {
             let _ = request.respond(Response::empty(204));

@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{OutputFormat, print_result, print_stocks};
+use crate::output::{print_result, print_stocks, OutputFormat};
 
 #[derive(Args)]
 pub struct InventoryArgs {
@@ -55,16 +55,22 @@ pub enum InventoryCommand {
     },
 }
 
-pub async fn run(args: &InventoryArgs, config: &Arc<Config>, format: &OutputFormat) -> anyhow::Result<()> {
+pub async fn run(
+    args: &InventoryArgs,
+    config: &Arc<Config>,
+    format: &OutputFormat,
+) -> anyhow::Result<()> {
     let client = BiolabClient::new(Arc::clone(config))?;
 
     match &args.command {
-        InventoryCommand::List { primer_name, location_id, low_stock } => {
-            let stocks = client.list_stocks(
-                primer_name.as_deref(),
-                location_id.as_deref(),
-                *low_stock,
-            ).await?;
+        InventoryCommand::List {
+            primer_name,
+            location_id,
+            low_stock,
+        } => {
+            let stocks = client
+                .list_stocks(primer_name.as_deref(), location_id.as_deref(), *low_stock)
+                .await?;
             match format {
                 OutputFormat::Json => print_result(&stocks, format),
                 OutputFormat::Text => print_stocks(&stocks),
@@ -78,12 +84,23 @@ pub async fn run(args: &InventoryArgs, config: &Arc<Config>, format: &OutputForm
             let stats = client.get_stock_stats().await?;
             print_result(&stats, format);
         }
-        InventoryCommand::Checkin { id, quantity, purpose } => {
+        InventoryCommand::Checkin {
+            id,
+            quantity,
+            purpose,
+        } => {
             let stock = client.checkin(id, *quantity, purpose).await?;
             print_result(&stock, format);
         }
-        InventoryCommand::Checkout { id, quantity, purpose, experiment_ref } => {
-            let stock = client.checkout(id, *quantity, purpose, experiment_ref).await?;
+        InventoryCommand::Checkout {
+            id,
+            quantity,
+            purpose,
+            experiment_ref,
+        } => {
+            let stock = client
+                .checkout(id, *quantity, purpose, experiment_ref)
+                .await?;
             print_result(&stock, format);
         }
         InventoryCommand::Locations => {

@@ -18,11 +18,24 @@ pub fn print_order(order: &Order) {
     let is_sequencing = order.order_type == "sequencing";
 
     println!("{}", format!("订单 ID  : {}", order.id).bold());
-    println!("类型     : {}", if is_sequencing { "测序" } else { "引物合成" });
+    println!(
+        "类型     : {}",
+        if is_sequencing {
+            "测序"
+        } else {
+            "引物合成"
+        }
+    );
     println!("状态     : {}", status_colored(&order.status));
     println!("供应商   : {}", order.supplier_name);
-    println!("联系人   : {} {}", order.customer_name, order.customer_phone);
-    println!("总价     : {}", order.total_price.as_deref().unwrap_or("N/A"));
+    println!(
+        "联系人   : {} {}",
+        order.customer_name, order.customer_phone
+    );
+    println!(
+        "总价     : {}",
+        order.total_price.as_deref().unwrap_or("N/A")
+    );
     println!("创建时间 : {}", order.created_at);
 
     if is_sequencing {
@@ -34,7 +47,11 @@ pub fn print_order(order: &Order) {
                     item.primer_name,
                     item.r#type.as_deref().unwrap_or("-"),
                     item.seq_vector.as_deref().unwrap_or("-"),
-                    if item.universal.unwrap_or(false) { "是" } else { "否" },
+                    if item.universal.unwrap_or(false) {
+                        "是"
+                    } else {
+                        "否"
+                    },
                 );
             }
         }
@@ -104,7 +121,9 @@ pub fn print_stocks(stocks: &[Stock]) {
             "{}  {:20}  剩余:{}  位置:{}",
             s.id,
             s.primer_name.as_deref().unwrap_or(""),
-            s.remaining_quantity.map(|v| v.to_string()).unwrap_or_else(|| "0".into()),
+            s.remaining_quantity
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| "0".into()),
             s.location_path.as_deref().unwrap_or(""),
         );
     }
@@ -116,7 +135,11 @@ pub fn print_templates(templates: &[Template]) {
         return;
     }
     for t in templates {
-        let default = if t.is_default.unwrap_or(false) { " [默认]" } else { "" };
+        let default = if t.is_default.unwrap_or(false) {
+            " [默认]"
+        } else {
+            ""
+        };
         let ot = t.order_type.as_deref().unwrap_or("通用");
         println!("{}  {:16}  {}{}", t.id, t.name, ot, default);
     }
@@ -124,9 +147,6 @@ pub fn print_templates(templates: &[Template]) {
 
 pub fn print_lab_members(members: &[LabMember]) {
     for m in members {
-        println!(
-            "{}  {:12}  {:24}  {}",
-            m.id, m.full_name, m.email, m.role
-        );
+        println!("{}  {:12}  {:24}  {}", m.id, m.full_name, m.email, m.role);
     }
 }

@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{OutputFormat, print_result};
+use crate::output::{print_result, OutputFormat};
 
 #[derive(Args)]
 pub struct MeArgs {

@@ -1,5 +1,6 @@
-pub mod users;
-pub mod orders;
-pub mod templates;
 pub mod inventory;
 pub mod lab;
+pub mod orders;
+pub mod skills;
+pub mod templates;
+pub mod users;

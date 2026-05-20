@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{OutputFormat, print_order, print_order_brief, print_result};
+use crate::output::{print_order, print_order_brief, print_result, OutputFormat};
 use crate::types::{CreatePrimerOrder, CreateSequencingOrder};
 
 #[derive(Args)]
@@ -54,7 +54,11 @@ pub enum OrdersCommand {
     UploadSequencingExcel { file: String },
 }
 
-pub async fn run(args: &OrdersArgs, config: &Arc<Config>, format: &OutputFormat) -> anyhow::Result<()> {
+pub async fn run(
+    args: &OrdersArgs,
+    config: &Arc<Config>,
+    format: &OutputFormat,
+) -> anyhow::Result<()> {
     let client = BiolabClient::new(Arc::clone(config))?;
 
     match &args.command {
@@ -67,7 +71,9 @@ pub async fn run(args: &OrdersArgs, config: &Arc<Config>, format: &OutputFormat)
             match format {
                 OutputFormat::Json => print_result(&orders, format),
                 OutputFormat::Text => {
-                    for o in &orders { print_order_brief(o); }
+                    for o in &orders {
+                        print_order_brief(o);
+                    }
                 }
             }
         }

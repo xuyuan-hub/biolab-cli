@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{OutputFormat, print_result, print_lab_members};
+use crate::output::{print_lab_members, print_result, OutputFormat};
 
 #[derive(Args)]
 pub struct LabArgs {
@@ -27,7 +27,11 @@ pub enum LabCommand {
     /// 移除成员
     RemoveMember { user_id: String },
     /// 邀请成员
-    Invite { email: String, #[arg(default_value = "member")] role: String },
+    Invite {
+        email: String,
+        #[arg(default_value = "member")]
+        role: String,
+    },
     /// 查看邀请
     Invitations,
     /// 接受邀请
@@ -35,7 +39,11 @@ pub enum LabCommand {
     /// 拒绝邀请
     DeclineInvite { invitation_id: String },
     /// 申请加入课题组
-    Join { lab_id: String, #[arg(default_value = "member")] role: String },
+    Join {
+        lab_id: String,
+        #[arg(default_value = "member")]
+        role: String,
+    },
     /// 查看入组申请（PI）
     Applications,
     /// 批准申请（PI）
@@ -50,7 +58,11 @@ pub enum LabCommand {
     RemoveRule { rule_id: String },
 }
 
-pub async fn run(args: &LabArgs, config: &Arc<Config>, format: &OutputFormat) -> anyhow::Result<()> {
+pub async fn run(
+    args: &LabArgs,
+    config: &Arc<Config>,
+    format: &OutputFormat,
+) -> anyhow::Result<()> {
     let client = BiolabClient::new(Arc::clone(config))?;
 
     match &args.command {

@@ -42,6 +42,16 @@ biolab login   # Feishu OAuth (token valid for 8 days)
 biolab status  # check login status
 ```
 
+### AI Agent Skill
+
+Install the bundled skill so Claude/Codex-style agents can discover the basic Biolab CLI usage without extra prompting:
+
+```bash
+biolab skills install          # local project: .claude/skills + .codex/skills
+biolab skills install --scope global
+biolab skills check -f json
+```
+
 ### 2. Orders
 
 ```bash

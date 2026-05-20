@@ -317,7 +317,8 @@ mod tests {
             }],
             "primer_items": []
         }"#;
-        let order: Order = serde_json::from_str(json).expect("should parse order with string numerics");
+        let order: Order =
+            serde_json::from_str(json).expect("should parse order with string numerics");
         assert_eq!(order.id, "a04fd30b");
         assert_eq!(order.items[0].nmoles, Some(25.0));
         assert_eq!(order.items[0].scale_od, Some(10.0));
@@ -343,7 +344,8 @@ mod tests {
             }],
             "primer_items": []
         }"#;
-        let order: Order = serde_json::from_str(json).expect("should parse order with numeric values");
+        let order: Order =
+            serde_json::from_str(json).expect("should parse order with numeric values");
         assert_eq!(order.items[0].nmoles, Some(25.0));
         assert_eq!(order.items[0].scale_od, Some(10.0));
     }
@@ -359,7 +361,8 @@ mod tests {
             "purpose": "test",
             "created_at": "2026-05-15T10:00:00Z"
         }"#;
-        let tx: Transaction = serde_json::from_str(json).expect("should parse transaction with string quantity");
+        let tx: Transaction =
+            serde_json::from_str(json).expect("should parse transaction with string quantity");
         assert_eq!(tx.quantity, 5.0);
     }
 
@@ -372,7 +375,8 @@ mod tests {
             "purpose": "test",
             "created_at": "2026-05-15T10:00:00Z"
         }"#;
-        let tx: Transaction = serde_json::from_str(json).expect("should parse transaction with numeric quantity");
+        let tx: Transaction =
+            serde_json::from_str(json).expect("should parse transaction with numeric quantity");
         assert_eq!(tx.quantity, 5.0);
     }
 
@@ -387,7 +391,8 @@ mod tests {
             "location_path": "Box-P2",
             "transactions": []
         }"#;
-        let stock: Stock = serde_json::from_str(json).expect("should parse stock with string remaining_quantity");
+        let stock: Stock =
+            serde_json::from_str(json).expect("should parse stock with string remaining_quantity");
         assert_eq!(stock.remaining_quantity, Some(3.5));
     }
 
@@ -401,7 +406,8 @@ mod tests {
             "max_price": "500.00",
             "approver_role": "finance"
         }"#;
-        let rule: ApprovalRule = serde_json::from_str(json).expect("should parse rule with string max_price");
+        let rule: ApprovalRule =
+            serde_json::from_str(json).expect("should parse rule with string max_price");
         assert_eq!(rule.max_price, Some(500.0));
     }
 }

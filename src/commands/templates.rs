@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{OutputFormat, print_result, print_templates};
+use crate::output::{print_result, print_templates, OutputFormat};
 
 #[derive(Args)]
 pub struct TemplatesArgs {
@@ -30,7 +30,11 @@ pub enum TemplatesCommand {
     SetDefault { id: String },
 }
 
-pub async fn run(args: &TemplatesArgs, config: &Arc<Config>, format: &OutputFormat) -> anyhow::Result<()> {
+pub async fn run(
+    args: &TemplatesArgs,
+    config: &Arc<Config>,
+    format: &OutputFormat,
+) -> anyhow::Result<()> {
     let client = BiolabClient::new(Arc::clone(config))?;
 
     match &args.command {

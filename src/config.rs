@@ -12,10 +12,13 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> Self {
-        let base_url = std::env::var("BIOLAB_BASE_URL")
-            .unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
+        let base_url =
+            std::env::var("BIOLAB_BASE_URL").unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
         let token_path = token_file_path();
-        Self { base_url, token_path }
+        Self {
+            base_url,
+            token_path,
+        }
     }
 
     pub fn load_token(&self) -> Option<String> {
