@@ -22,7 +22,7 @@
 - 输出层还没有统一 envelope，`OutputFormat` 在部分函数里没有完全生效。
 - 认证流程偏人工阻塞，不适合 Agent split-flow。
 - 模板和订单工作流还没有打通，仍要求用户或 Agent 手动拼完整 JSON。
-- 发布链路还缺 CI release、checksums 和二进制产物策略。
+- 发布链路已有 GitHub Actions release workflow，但还缺 checksums、安装脚本和更明确的二进制产物策略。
 
 ## 模块边界规划
 
@@ -163,7 +163,7 @@
 2. 拆分认证流程，增加 Agent 友好的 `auth status --json`、`login --no-wait`、`callback/poll`。
 3. 打通 templates 和 orders，新增 validate、preview、from-template 类工作流命令。
 4. 拆分 `types.rs` 为领域类型模块，并逐步把状态、角色、订单类型收敛为 enum。
-5. 补发布链路：CI checks、release workflow、checksums、安装脚本或明确二进制策略。
+5. 完善发布链路：补 checksums、安装脚本和更明确的二进制产物策略。
 
 ## 验收标准
 
