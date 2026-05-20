@@ -10,18 +10,17 @@ Download from the [latest release](https://github.com/xuyuan-hub/biolab-cli/rele
 
 | Platform | Binary |
 |----------|--------|
-| Linux (x86_64) | `biolab-linux-amd64` |
-| Linux (arm64) | `biolab-linux-arm64` |
-| macOS (x86_64) | `biolab-macos-amd64` |
-| macOS (arm64) | `biolab-macos-arm64` |
-| Windows (x86_64) | `biolab-windows-amd64.exe` |
+| Linux | `biolab_unix` |
+| macOS (x86_64) | `biolab_mac_amd64` |
+| macOS (arm64) | `biolab_mac_arm64` |
+| Windows | `biolab_win.exe` |
 
 ```bash
 # Linux / macOS
-chmod +x biolab-* && sudo mv biolab-* /usr/local/bin/biolab
+chmod +x biolab_unix biolab_mac_* && sudo cp biolab_unix /usr/local/bin/biolab
 
 # Windows
-# Move biolab-windows-amd64.exe to your PATH or use the full path
+# Rename biolab_win.exe to biolab.exe and place in PATH
 ```
 
 ### Build from Source
