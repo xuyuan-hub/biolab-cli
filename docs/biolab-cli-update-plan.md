@@ -100,25 +100,26 @@
 
 ### 5. Agent Skill 文档模块
 
-目标目录：`skills/biolab-api/references/`
+目标目录：`skills/biolab-*/`
 
 文件：
 
-- `orders.md`
-- `inventory.md`
-- `templates.md`
-- `lab.md`
-- `users.md`
+- `biolab-shared/SKILL.md`
+- `biolab-orders/SKILL.md`
+- `biolab-inventory/SKILL.md`
+- `biolab-templates/SKILL.md`
+- `biolab-lab/SKILL.md`
+- `biolab-users/SKILL.md`
 
 职责：
 
 - 为 Agent 提供领域规则、常用命令、危险操作、JSON 输入示例。
-- `SKILL.md` 做路由和总规则，细节放到 references。
+- `biolab-shared` 做通用认证和 OpenAPI 规则；领域 skill 各自承载本领域流程。
 
 验收标准：
 
 - `CLAUDE.md` 中提到的 references 文件实际存在。
-- `SKILL.md` 明确要求在复杂订单、库存、课题组操作前读取对应 reference。
+- 领域 `SKILL.md` 明确要求先读取 `biolab-shared`。
 
 ### 6. 业务工作流命令
 
@@ -147,8 +148,7 @@
 - 新增 `src/api_response.rs`。
 - 从 `client.rs` 移出响应解析函数。
 - 修正数组解析失败静默吞错的问题。
-- 新增 `skills/biolab-api/references/` 基础文档。
-- 更新 `SKILL.md`，让 Agent 知道何时读取 reference。
+- 新增基础 Agent skill 文档，后续迁移为 `biolab-shared` 和领域 skills。
 
 第二轮：服务层重构。
 

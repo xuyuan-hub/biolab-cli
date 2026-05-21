@@ -5,8 +5,15 @@ use serde::Serialize;
 
 use crate::output::{print_result, OutputFormat};
 
-const SKILL_NAME: &str = "biolab-api";
 const SKILLS_REPO: &str = "xuyuan-hub/biolab-cli";
+const EXPECTED_SKILLS: &[&str] = &[
+    "biolab-shared",
+    "biolab-orders",
+    "biolab-templates",
+    "biolab-inventory",
+    "biolab-lab",
+    "biolab-users",
+];
 
 #[derive(Args)]
 pub struct SkillsArgs {
@@ -33,8 +40,9 @@ pub enum SkillsCommand {
 #[derive(Debug, Serialize)]
 struct SkillReport {
     installer: &'static str,
-    skill: &'static str,
+    skills: &'static [&'static str],
     installed: bool,
+    missing: Vec<&'static str>,
     action: &'static str,
 }
 
@@ -44,17 +52,20 @@ pub fn run(args: &SkillsArgs, format: &OutputFormat) -> anyhow::Result<()> {
             install_with_skills_cli(*global)?;
             SkillReport {
                 installer: "npx skills",
-                skill: SKILL_NAME,
+                skills: EXPECTED_SKILLS,
                 installed: true,
+                missing: Vec::new(),
                 action: "installed",
             }
         }
         SkillsCommand::Check { global } => {
-            let installed = check_with_skills_cli(*global)?;
+            let missing = missing_skills_with_skills_cli(*global)?;
+            let installed = missing.is_empty();
             SkillReport {
                 installer: "npx skills",
-                skill: SKILL_NAME,
+                skills: EXPECTED_SKILLS,
                 installed,
+                missing,
                 action: "checked",
             }
         }
@@ -66,15 +77,7 @@ pub fn run(args: &SkillsArgs, format: &OutputFormat) -> anyhow::Result<()> {
 
 fn install_with_skills_cli(global: bool) -> anyhow::Result<()> {
     let mut command = Command::new(npx_bin());
-    command.args([
-        "-y",
-        "skills",
-        "add",
-        SKILLS_REPO,
-        "--skill",
-        SKILL_NAME,
-        "-y",
-    ]);
+    command.args(["-y", "skills", "add", SKILLS_REPO, "-y"]);
     if global {
         command.arg("-g");
     }
@@ -82,9 +85,8 @@ fn install_with_skills_cli(global: bool) -> anyhow::Result<()> {
     let status = command.status()?;
     if !status.success() {
         anyhow::bail!(
-            "`npx skills add` failed. Try manually: npx -y skills add {} --skill {} -y{}",
+            "`npx skills add` failed. Try manually: npx -y skills add {} -y{}",
             SKILLS_REPO,
-            SKILL_NAME,
             if global { " -g" } else { "" }
         );
     }
@@ -92,7 +94,7 @@ fn install_with_skills_cli(global: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn check_with_skills_cli(global: bool) -> anyhow::Result<bool> {
+fn missing_skills_with_skills_cli(global: bool) -> anyhow::Result<Vec<&'static str>> {
     let mut command = Command::new(npx_bin());
     command.args(["-y", "skills", "ls"]);
     if global {
@@ -106,9 +108,12 @@ fn check_with_skills_cli(global: bool) -> anyhow::Result<bool> {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    Ok(parse_skills_list(&stdout)
+    let installed = parse_skills_list(&stdout);
+    Ok(EXPECTED_SKILLS
         .iter()
-        .any(|skill| skill == SKILL_NAME))
+        .copied()
+        .filter(|expected| !installed.iter().any(|skill| skill == expected))
+        .collect())
 }
 
 fn parse_skills_list(text: &str) -> Vec<String> {
@@ -163,8 +168,14 @@ fn print_report(report: &SkillReport, format: &OutputFormat) {
             };
             println!(
                 "{}  {}  {}  {}",
-                report.installer, report.action, status, report.skill
+                report.installer,
+                report.action,
+                status,
+                report.skills.join(", ")
             );
+            if !report.missing.is_empty() {
+                println!("missing: {}", report.missing.join(", "));
+            }
         }
     }
 }
@@ -183,8 +194,8 @@ mod tests {
 
     #[test]
     fn parses_skills_ls_output() {
-        let parsed = parse_skills_list("- biolab-api@0.2.4\nlark-calendar\nOther: heading");
-        assert!(parsed.contains(&"biolab-api".to_string()));
+        let parsed = parse_skills_list("- biolab-orders@0.2.5\nlark-calendar\nOther: heading");
+        assert!(parsed.contains(&"biolab-orders".to_string()));
         assert!(parsed.contains(&"lark-calendar".to_string()));
         assert!(!parsed.contains(&"Other".to_string()));
     }
@@ -192,8 +203,8 @@ mod tests {
     #[test]
     fn parses_colored_skills_ls_output() {
         let parsed = parse_skills_list(
-            "\u{1b}[1mProject Skills\u{1b}[0m\n\n\u{1b}[36mbiolab-api\u{1b}[0m \u{1b}[38;5;102m./.agents/skills/biolab-api\u{1b}[0m",
+            "\u{1b}[1mProject Skills\u{1b}[0m\n\n\u{1b}[36mbiolab-orders\u{1b}[0m \u{1b}[38;5;102m./.agents/skills/biolab-orders\u{1b}[0m",
         );
-        assert!(parsed.contains(&"biolab-api".to_string()));
+        assert!(parsed.contains(&"biolab-orders".to_string()));
     }
 }
