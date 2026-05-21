@@ -1,4 +1,4 @@
-﻿---
+---
 name: biolab-api
 version: 0.1.0
 description: "Use when operating the Biolab lab management CLI for primer synthesis, sequencing orders, inventory, templates, lab members, or account status."
