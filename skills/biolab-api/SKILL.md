@@ -35,6 +35,7 @@ The access token is loaded from `BIOLAB_TOKEN` first, then from the OS keychain.
 - Do not print tokens or secrets.
 - For write operations, confirm the user's intent first when the request is destructive or changes shared lab state.
 - If a command fails because login is missing or expired, run `biolab login --background`, send the printed auth URL to the user, and check `biolab status` after the user completes the browser flow.
+- Use `biolab update check` to check whether the installed CLI is behind the latest release; do not auto-download or replace binaries unless the user asks.
 - Use command help before guessing flags: `biolab <domain> --help`.
 - Before complex domain work, read the matching reference file:
   - Orders: `references/orders.md`
@@ -50,6 +51,7 @@ Account:
 ```bash
 biolab me -f json
 biolab me update '{"phone_number":"13800000000"}'
+biolab update check
 biolab logout
 ```
 
@@ -113,7 +115,13 @@ biolab skills install
 Install globally for supported agents:
 
 ```bash
-biolab skills install --scope global
+biolab skills install --global
+```
+
+The install command delegates to the standard `skills` installer. For direct installation, use:
+
+```bash
+npx -y skills add xuyuan-hub/biolab-cli -s biolab-api -y -g
 ```
 
 Check whether installed skills match the running CLI version:

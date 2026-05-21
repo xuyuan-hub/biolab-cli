@@ -79,6 +79,9 @@ biolab login
 # 2. Verify
 biolab status
 
+# Optional: check for newer releases
+biolab update check
+
 # 3. Start using
 biolab me
 biolab orders list
@@ -107,8 +110,11 @@ biolab login --background
 **Step 3 — Install Agent Skills (required for automated workflows)**
 
 ```bash
-# Universal — supports Claude Code, Codex, Cursor, OpenCode, 51+ agents
-npx skills add xuyuan-hub/biolab-cli -y -g
+# Universal — supports Hermes, Claude Code, Codex, Cursor, OpenCode, and other skills-compatible agents
+npx -y skills add xuyuan-hub/biolab-cli -s biolab-api -y -g
+
+# Equivalent via the CLI
+biolab skills install --global
 ```
 
 **Step 4 — Verify**
@@ -121,7 +127,7 @@ If this returns user info, the setup is complete.
 
 ## AI Agent Skills
 
-After installing skills via `npx skills add` or `biolab skills install`, the Agent gains access to the following structured skills:
+After installing skills via `npx skills add` or `biolab skills install`, the Agent gains access to the following structured skills. `biolab skills install` delegates to the standard `skills` installer so Hermes and other agents can refresh their own skill indexes correctly.
 
 | Skill | Description |
 |-------|-------------|
@@ -132,7 +138,7 @@ After installing skills via `npx skills add` or `biolab skills install`, the Age
 | `lab` | Lab CRUD, member management (5 roles: pi > procurement > finance > warehouse > member), approval rules |
 | `users` | User info, phone/email requirements, permission model, signup |
 
-The Agent skill reference docs are located in `.claude/skills/biolab-api/references/` after installation.
+The Agent skill reference docs are installed by the standard `skills` installer together with `biolab-api`.
 
 ### Agent Order Workflow
 
@@ -166,6 +172,14 @@ biolab status
 # Logout
 biolab logout
 ```
+
+## Updates
+
+```bash
+biolab update check
+```
+
+The update check compares the local CLI version with the latest GitHub Release and prints the recommended asset for the current platform. It does not automatically replace the running binary.
 
 Token is stored in the OS keychain by default and is valid for 8 days. In Docker/K8s containers, if keyring is unavailable, the CLI automatically uses a container-local token file so Agent login does not require restarting the container or mounting a secret. `BIOLAB_TOKEN` can override storage for CI or temporary sessions. Legacy `~/.biolab_token` files are migrated into the keychain when possible on non-container hosts; host plaintext file storage is disabled unless `BIOLAB_INSECURE_TOKEN_FILE=1` is explicitly set in a trusted headless environment.
 
@@ -437,6 +451,9 @@ biolab login
 # 2. 验证
 biolab status
 
+# 可选：检查是否有新版本
+biolab update check
+
 # 3. 开始使用
 biolab me
 biolab orders list
@@ -481,11 +498,11 @@ biolab me -f json
 执行以下任一命令后，Agent 可使用以下结构化 skills：
 
 ```bash
-# 通用安装（支持 Claude Code, Codex, Cursor, OpenCode 等 51+ agent）
-npx skills add xuyuan-hub/biolab-cli -y -g
+# 通用安装（支持 Hermes、Claude Code、Codex、Cursor、OpenCode 等兼容 skills 的 agent）
+npx -y skills add xuyuan-hub/biolab-cli -s biolab-api -y -g
 
-# 或使用 CLI 内置安装（仅 Claude / Codex）
-biolab skills install
+# 或使用 CLI 安装；会委托给 npx skills add
+biolab skills install --global
 ```
 
 | Skill | 描述 |
@@ -497,7 +514,7 @@ biolab skills install
 | `lab` | 课题组 CRUD、成员管理（5 种角色：pi > procurement > finance > warehouse > member）、审批规则 |
 | `users` | 用户信息、手机号/邮箱要求、权限模型、注册 |
 
-Agent skill 参考文档位于 `.claude/skills/biolab-api/references/`。
+Agent skill 参考文档会随 `biolab-api` 一起由标准 `skills` 安装器安装。
 
 ### Agent 下单工作流
 
@@ -531,6 +548,14 @@ biolab status
 # 登出
 biolab logout
 ```
+
+## 更新
+
+```bash
+biolab update check
+```
+
+更新检查会比较本地 CLI 版本和 GitHub 最新 Release，并输出当前平台推荐下载资产。它不会自动替换正在运行的二进制文件。
 
 Token 默认存储在 OS 密钥链中，有效期 8 天。在 Docker/K8s 容器中，如果 keyring 不可用，CLI 会自动使用容器内本地 token 文件，Agent 登录无需重启容器或挂载 secret。可通过 `BIOLAB_TOKEN` 环境变量覆盖。非容器宿主机上的遗留 `~/.biolab_token` 文件会尽量迁移到密钥链；宿主机明文文件存储默认关闭，只有在可信 headless 环境中显式设置 `BIOLAB_INSECURE_TOKEN_FILE=1` 才会启用。
 

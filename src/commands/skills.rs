@@ -1,35 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use clap::{Args, Subcommand, ValueEnum};
+use clap::{Args, Subcommand};
 use serde::Serialize;
 
 use crate::output::{print_result, OutputFormat};
 
 const SKILL_NAME: &str = "biolab-api";
-const SKILL_MD: &str = include_str!("../../skills/biolab-api/SKILL.md");
-const STAMP_FILE: &str = ".biolab-cli-version";
-const REFERENCES: &[(&str, &str)] = &[
-    (
-        "orders.md",
-        include_str!("../../skills/biolab-api/references/orders.md"),
-    ),
-    (
-        "inventory.md",
-        include_str!("../../skills/biolab-api/references/inventory.md"),
-    ),
-    (
-        "templates.md",
-        include_str!("../../skills/biolab-api/references/templates.md"),
-    ),
-    (
-        "lab.md",
-        include_str!("../../skills/biolab-api/references/lab.md"),
-    ),
-    (
-        "users.md",
-        include_str!("../../skills/biolab-api/references/users.md"),
-    ),
-];
+const SKILLS_REPO: &str = "xuyuan-hub/biolab-cli";
 
 #[derive(Args)]
 pub struct SkillsArgs {
@@ -39,265 +16,176 @@ pub struct SkillsArgs {
 
 #[derive(Subcommand)]
 pub enum SkillsCommand {
-    /// Install bundled AI agent skill files
+    /// Install AI agent skills through the standard skills installer
     Install {
-        /// Install into the current project or the user's home agent config
-        #[arg(long, value_enum, default_value_t = SkillScope::Local)]
-        scope: SkillScope,
-        /// Agent skills layout to target
-        #[arg(long, value_enum, default_value_t = AgentTarget::All)]
-        agent: AgentTarget,
-        /// Custom skills root. The skill is installed under <path>/biolab-api
+        /// Install globally for all supported agents
         #[arg(long)]
-        path: Option<PathBuf>,
-        /// Overwrite existing skill files
-        #[arg(long)]
-        force: bool,
+        global: bool,
     },
-    /// Check whether bundled skills are installed and in sync
+    /// Check whether the skill is installed through the standard skills installer
     Check {
-        /// Check the current project or the user's home agent config
-        #[arg(long, value_enum, default_value_t = SkillScope::Local)]
-        scope: SkillScope,
-        /// Agent skills layout to check
-        #[arg(long, value_enum, default_value_t = AgentTarget::All)]
-        agent: AgentTarget,
-        /// Custom skills root. The skill is expected under <path>/biolab-api
+        /// Check globally installed skills
         #[arg(long)]
-        path: Option<PathBuf>,
+        global: bool,
     },
-    /// Print target skill directories
-    Path {
-        /// Show paths for the current project or the user's home agent config
-        #[arg(long, value_enum, default_value_t = SkillScope::Local)]
-        scope: SkillScope,
-        /// Agent skills layout to show
-        #[arg(long, value_enum, default_value_t = AgentTarget::All)]
-        agent: AgentTarget,
-        /// Custom skills root. The skill path is <path>/biolab-api
-        #[arg(long)]
-        path: Option<PathBuf>,
-    },
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum SkillScope {
-    Local,
-    Global,
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum AgentTarget {
-    All,
-    Claude,
-    Codex,
 }
 
 #[derive(Debug, Serialize)]
 struct SkillReport {
-    agent: &'static str,
-    path: String,
+    installer: &'static str,
+    skill: &'static str,
     installed: bool,
-    current_version: String,
-    target_version: String,
-    in_sync: bool,
-    action: String,
+    action: &'static str,
 }
 
 pub fn run(args: &SkillsArgs, format: &OutputFormat) -> anyhow::Result<()> {
-    match &args.command {
-        SkillsCommand::Install {
-            scope,
-            agent,
-            path,
-            force,
-        } => {
-            let reports = install(*scope, *agent, path.as_deref(), *force)?;
-            print_reports(&reports, format);
-        }
-        SkillsCommand::Check { scope, agent, path } => {
-            let reports = check(*scope, *agent, path.as_deref())?;
-            print_reports(&reports, format);
-        }
-        SkillsCommand::Path { scope, agent, path } => {
-            let reports = target_paths(*scope, *agent, path.as_deref())?
-                .into_iter()
-                .map(|target| SkillReport {
-                    agent: target.agent,
-                    path: target.skill_dir.display().to_string(),
-                    installed: skill_files_installed(&target.skill_dir),
-                    current_version: read_stamp(&target.skill_dir).unwrap_or_default(),
-                    target_version: cli_version().to_string(),
-                    in_sync: skill_files_installed(&target.skill_dir)
-                        && read_stamp(&target.skill_dir).unwrap_or_default() == cli_version(),
-                    action: "path".to_string(),
-                })
-                .collect::<Vec<_>>();
-            print_reports(&reports, format);
-        }
-    }
-    Ok(())
-}
-
-fn install(
-    scope: SkillScope,
-    agent: AgentTarget,
-    custom_root: Option<&Path>,
-    force: bool,
-) -> anyhow::Result<Vec<SkillReport>> {
-    let mut reports = Vec::new();
-    for target in target_paths(scope, agent, custom_root)? {
-        let existing_stamp = read_stamp(&target.skill_dir).unwrap_or_default();
-        let already_current =
-            skill_files_installed(&target.skill_dir) && existing_stamp == cli_version();
-        let action = if already_current && !force {
-            "already_in_sync"
-        } else {
-            std::fs::create_dir_all(&target.skill_dir)?;
-            if target.skill_file.exists() {
-                "updated"
-            } else {
-                "installed"
+    let report = match &args.command {
+        SkillsCommand::Install { global } => {
+            install_with_skills_cli(*global)?;
+            SkillReport {
+                installer: "npx skills",
+                skill: SKILL_NAME,
+                installed: true,
+                action: "installed",
             }
-        };
-
-        if action != "already_in_sync" {
-            write_skill_files(&target.skill_dir)?;
-            std::fs::write(target.skill_dir.join(STAMP_FILE), cli_version())?;
         }
-
-        let current_version = read_stamp(&target.skill_dir).unwrap_or_default();
-        reports.push(SkillReport {
-            agent: target.agent,
-            path: target.skill_dir.display().to_string(),
-            installed: skill_files_installed(&target.skill_dir),
-            in_sync: current_version == cli_version(),
-            current_version,
-            target_version: cli_version().to_string(),
-            action: action.to_string(),
-        });
-    }
-    Ok(reports)
-}
-
-fn check(
-    scope: SkillScope,
-    agent: AgentTarget,
-    custom_root: Option<&Path>,
-) -> anyhow::Result<Vec<SkillReport>> {
-    let mut reports = Vec::new();
-    for target in target_paths(scope, agent, custom_root)? {
-        let current_version = read_stamp(&target.skill_dir).unwrap_or_default();
-        let installed = skill_files_installed(&target.skill_dir);
-        reports.push(SkillReport {
-            agent: target.agent,
-            path: target.skill_dir.display().to_string(),
-            installed,
-            in_sync: installed && current_version == cli_version(),
-            current_version,
-            target_version: cli_version().to_string(),
-            action: "checked".to_string(),
-        });
-    }
-    Ok(reports)
-}
-
-#[derive(Debug)]
-struct SkillTarget {
-    agent: &'static str,
-    skill_dir: PathBuf,
-    skill_file: PathBuf,
-}
-
-fn target_paths(
-    scope: SkillScope,
-    agent: AgentTarget,
-    custom_root: Option<&Path>,
-) -> anyhow::Result<Vec<SkillTarget>> {
-    let roots = if let Some(root) = custom_root {
-        vec![("custom", root.to_path_buf())]
-    } else {
-        match agent {
-            AgentTarget::All => vec![
-                ("claude", default_root(scope, "claude")?),
-                ("codex", default_root(scope, "codex")?),
-            ],
-            AgentTarget::Claude => vec![("claude", default_root(scope, "claude")?)],
-            AgentTarget::Codex => vec![("codex", default_root(scope, "codex")?)],
+        SkillsCommand::Check { global } => {
+            let installed = check_with_skills_cli(*global)?;
+            SkillReport {
+                installer: "npx skills",
+                skill: SKILL_NAME,
+                installed,
+                action: "checked",
+            }
         }
     };
 
-    Ok(roots
-        .into_iter()
-        .map(|(agent, root)| {
-            let skill_dir = root.join(SKILL_NAME);
-            let skill_file = skill_dir.join("SKILL.md");
-            SkillTarget {
-                agent,
-                skill_dir,
-                skill_file,
+    print_report(&report, format);
+    Ok(())
+}
+
+fn install_with_skills_cli(global: bool) -> anyhow::Result<()> {
+    let mut command = Command::new(npx_bin());
+    command.args(["-y", "skills", "add", SKILLS_REPO, "-s", SKILL_NAME, "-y"]);
+    if global {
+        command.arg("-g");
+    }
+
+    let status = command.status()?;
+    if !status.success() {
+        anyhow::bail!(
+            "`npx skills add` failed. Try manually: npx -y skills add {} -s {} -y{}",
+            SKILLS_REPO,
+            SKILL_NAME,
+            if global { " -g" } else { "" }
+        );
+    }
+
+    Ok(())
+}
+
+fn check_with_skills_cli(global: bool) -> anyhow::Result<bool> {
+    let mut command = Command::new(npx_bin());
+    command.args(["-y", "skills", "ls"]);
+    if global {
+        command.arg("-g");
+    }
+
+    let output = command.output()?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("`npx skills ls` failed: {}", stderr.trim());
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(parse_skills_list(&stdout)
+        .iter()
+        .any(|skill| skill == SKILL_NAME))
+}
+
+fn parse_skills_list(text: &str) -> Vec<String> {
+    text.lines()
+        .filter_map(|line| {
+            let clean = strip_ansi(line);
+            let token = clean.trim().trim_start_matches('-').trim();
+            if token.is_empty() || token.ends_with(':') {
+                return None;
+            }
+
+            let first_column = token.split_whitespace().next().unwrap_or(token);
+            let name = first_column.split('@').next().unwrap_or(first_column);
+            if name
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | ':' | '-'))
+            {
+                Some(name.to_string())
+            } else {
+                None
             }
         })
-        .collect())
+        .collect()
 }
 
-fn default_root(scope: SkillScope, agent: &str) -> anyhow::Result<PathBuf> {
-    let root = match scope {
-        SkillScope::Local => std::env::current_dir()?,
-        SkillScope::Global => dirs::home_dir().unwrap_or_else(|| PathBuf::from(".")),
-    };
-
-    let path = match agent {
-        "claude" => root.join(".claude").join("skills"),
-        "codex" => root.join(".codex").join("skills"),
-        _ => root,
-    };
-    Ok(path)
-}
-
-fn read_stamp(skill_dir: &Path) -> Option<String> {
-    std::fs::read_to_string(skill_dir.join(STAMP_FILE))
-        .ok()
-        .map(|value| value.trim().to_string())
-}
-
-fn write_skill_files(skill_dir: &Path) -> anyhow::Result<()> {
-    std::fs::write(skill_dir.join("SKILL.md"), SKILL_MD)?;
-
-    let references_dir = skill_dir.join("references");
-    std::fs::create_dir_all(&references_dir)?;
-    for (file_name, content) in REFERENCES {
-        std::fs::write(references_dir.join(file_name), content)?;
-    }
-    Ok(())
-}
-
-fn skill_files_installed(skill_dir: &Path) -> bool {
-    skill_dir.join("SKILL.md").exists()
-        && REFERENCES
-            .iter()
-            .all(|(file_name, _)| skill_dir.join("references").join(file_name).exists())
-}
-
-fn print_reports(reports: &[SkillReport], format: &OutputFormat) {
-    match format {
-        OutputFormat::Json => print_result(&reports, format),
-        OutputFormat::Text => {
-            for report in reports {
-                let status = if report.in_sync {
-                    "in sync"
-                } else {
-                    "needs install"
-                };
-                println!(
-                    "{}  {}  {}  {}",
-                    report.agent, report.action, status, report.path
-                );
+fn strip_ansi(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\u{1b}' && chars.peek() == Some(&'[') {
+            chars.next();
+            for next in chars.by_ref() {
+                if ('@'..='~').contains(&next) {
+                    break;
+                }
             }
+        } else {
+            output.push(ch);
+        }
+    }
+    output
+}
+
+fn print_report(report: &SkillReport, format: &OutputFormat) {
+    match format {
+        OutputFormat::Json => print_result(report, format),
+        OutputFormat::Text => {
+            let status = if report.installed {
+                "installed"
+            } else {
+                "not installed"
+            };
+            println!(
+                "{}  {}  {}  {}",
+                report.installer, report.action, status, report.skill
+            );
         }
     }
 }
 
-fn cli_version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
+fn npx_bin() -> &'static str {
+    if cfg!(windows) {
+        "npx.cmd"
+    } else {
+        "npx"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_skills_ls_output() {
+        let parsed = parse_skills_list("- biolab-api@0.2.4\nlark-calendar\nOther: heading");
+        assert!(parsed.contains(&"biolab-api".to_string()));
+        assert!(parsed.contains(&"lark-calendar".to_string()));
+        assert!(!parsed.contains(&"Other".to_string()));
+    }
+
+    #[test]
+    fn parses_colored_skills_ls_output() {
+        let parsed = parse_skills_list(
+            "\u{1b}[1mProject Skills\u{1b}[0m\n\n\u{1b}[36mbiolab-api\u{1b}[0m \u{1b}[38;5;102m./.agents/skills/biolab-api\u{1b}[0m",
+        );
+        assert!(parsed.contains(&"biolab-api".to_string()));
+    }
 }

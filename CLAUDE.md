@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Project Overview
 
-**biolab-cli** — A Rust CLI client for the Biolab lab management system (primer synthesis + sequencing orders, inventory, lab administration). Replaces the Python scripts embedded in `.claude/skills/biolab-api/scripts/`.
+**biolab-cli** — A Rust CLI client for the Biolab lab management system (primer synthesis + sequencing orders, inventory, lab administration).
 
 The system communicates with a FastAPI backend at `http://8.136.56.203/api/v1` using Feishu OAuth for authentication.
 
@@ -80,7 +80,7 @@ src/
 - **Custom deserializers**: `string_or_f64` / `opt_string_or_f64` in `types.rs` — backend sometimes returns numeric fields as JSON strings
 - **Errors**: `BiolabError` in `src/errors.rs` (not `error.rs` — avoids collision with `std::error`)
 - **Output modes**: `-f json` for machine-readable, default text for human (colored status badges)
-- **Agent skills**: `biolab skills install` copies the bundled `skills/biolab-api/SKILL.md` into `.claude/skills/biolab-api` and `.codex/skills/biolab-api`, then writes a version stamp for `biolab skills check`
+- **Agent skills**: `biolab skills install` delegates to `npx skills add xuyuan-hub/biolab-cli -s biolab-api`, so supported agents refresh their own skill indexes.
 - **Tests**: `cargo test` must pass before every submission — CI gate enforces this (23 unit tests across api_response, services, types)
 
 ### API Base URL
@@ -105,7 +105,7 @@ pending → ordered → received → stored
 Five workflow roles: `pi` > `procurement` > `finance` > `warehouse` > `member`
 
 ### Reference Docs
-Detailed API schemas are bundled in `skills/biolab-api/references/` and installed into `.claude/skills/biolab-api/references/`:
+Detailed API schemas are bundled in `skills/biolab-api/references/` and installed by the standard `skills` installer:
 - `orders.md` — Order schemas, status machine, supplier differences
 - `inventory.md` — Stock/checkin/checkout schemas
 - `templates.md` — Template fields for order defaults

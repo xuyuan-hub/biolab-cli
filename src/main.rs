@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use biolab::commands::{inventory, lab, orders, skills, templates, users};
+use biolab::commands::{inventory, lab, orders, skills, templates, update, users};
 use biolab::config::Config;
 use biolab::output::OutputFormat;
 use biolab::{check_status, login, logout, poll_login_from_env, LoginMode};
@@ -63,6 +63,9 @@ enum Commands {
 
     /// AI agent skill installation and checks
     Skills(skills::SkillsArgs),
+
+    /// 检查 CLI 更新
+    Update(update::UpdateArgs),
 }
 
 #[derive(Args)]
@@ -116,6 +119,7 @@ async fn main() {
         Some(Commands::Inventory(args)) => inventory::run(&args, &config, &format).await,
         Some(Commands::Lab(args)) => lab::run(&args, &config, &format).await,
         Some(Commands::Skills(args)) => skills::run(&args, &format),
+        Some(Commands::Update(args)) => update::run(&args, &format).await,
     };
 
     if let Err(e) = result {

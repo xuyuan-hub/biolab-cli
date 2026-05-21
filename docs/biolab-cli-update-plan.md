@@ -14,7 +14,7 @@
 - Feishu OAuth 登录和本地 token 存储。
 - 订单、模板、库存、课题组、用户相关 API 调用。
 - JSON 文件创建订单和模板。
-- 初步 Agent skill：`biolab skills install/check/path`。
+- 初步 Agent skill：`biolab skills install/check`，委托标准 `skills` 安装器处理 agent 发现与索引。
 
 主要问题：
 
