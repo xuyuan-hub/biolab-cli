@@ -1,4 +1,4 @@
----
+﻿---
 name: biolab-api
 version: 0.1.0
 description: "Use when operating the Biolab lab management CLI for primer synthesis, sequencing orders, inventory, templates, lab members, or account status."
@@ -121,7 +121,7 @@ biolab skills install --global
 The install command delegates to the standard `skills` installer. For direct installation, use:
 
 ```bash
-npx -y skills add xuyuan-hub/biolab-cli -s biolab-api -y -g
+npx -y skills add xuyuan-hub/biolab-cli --skill biolab-api -y -g
 ```
 
 Check whether installed skills match the running CLI version:

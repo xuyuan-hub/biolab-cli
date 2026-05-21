@@ -1,4 +1,4 @@
-# biolab-cli
+﻿# biolab-cli
 
 [Rust](https://www.rust-lang.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CI](https://github.com/xuyuan-hub/biolab-cli/actions/workflows/release.yml/badge.svg)](https://github.com/xuyuan-hub/biolab-cli/actions/workflows/release.yml)
 
@@ -111,7 +111,7 @@ biolab login --background
 
 ```bash
 # Universal — supports Hermes, Claude Code, Codex, Cursor, OpenCode, and other skills-compatible agents
-npx -y skills add xuyuan-hub/biolab-cli -s biolab-api -y -g
+npx -y skills add xuyuan-hub/biolab-cli --skill biolab-api -y -g
 
 # Equivalent via the CLI
 biolab skills install --global
@@ -499,7 +499,7 @@ biolab me -f json
 
 ```bash
 # 通用安装（支持 Hermes、Claude Code、Codex、Cursor、OpenCode 等兼容 skills 的 agent）
-npx -y skills add xuyuan-hub/biolab-cli -s biolab-api -y -g
+npx -y skills add xuyuan-hub/biolab-cli --skill biolab-api -y -g
 
 # 或使用 CLI 安装；会委托给 npx skills add
 biolab skills install --global

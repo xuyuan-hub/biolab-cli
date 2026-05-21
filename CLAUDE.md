@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with this repository.
 
@@ -80,7 +80,7 @@ src/
 - **Custom deserializers**: `string_or_f64` / `opt_string_or_f64` in `types.rs` — backend sometimes returns numeric fields as JSON strings
 - **Errors**: `BiolabError` in `src/errors.rs` (not `error.rs` — avoids collision with `std::error`)
 - **Output modes**: `-f json` for machine-readable, default text for human (colored status badges)
-- **Agent skills**: `biolab skills install` delegates to `npx skills add xuyuan-hub/biolab-cli -s biolab-api`, so supported agents refresh their own skill indexes.
+- **Agent skills**: `biolab skills install` delegates to `npx skills add xuyuan-hub/biolab-cli --skill biolab-api`, so supported agents refresh their own skill indexes.
 - **Tests**: `cargo test` must pass before every submission — CI gate enforces this (23 unit tests across api_response, services, types)
 
 ### API Base URL

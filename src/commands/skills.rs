@@ -66,7 +66,15 @@ pub fn run(args: &SkillsArgs, format: &OutputFormat) -> anyhow::Result<()> {
 
 fn install_with_skills_cli(global: bool) -> anyhow::Result<()> {
     let mut command = Command::new(npx_bin());
-    command.args(["-y", "skills", "add", SKILLS_REPO, "-s", SKILL_NAME, "-y"]);
+    command.args([
+        "-y",
+        "skills",
+        "add",
+        SKILLS_REPO,
+        "--skill",
+        SKILL_NAME,
+        "-y",
+    ]);
     if global {
         command.arg("-g");
     }
@@ -74,7 +82,7 @@ fn install_with_skills_cli(global: bool) -> anyhow::Result<()> {
     let status = command.status()?;
     if !status.success() {
         anyhow::bail!(
-            "`npx skills add` failed. Try manually: npx -y skills add {} -s {} -y{}",
+            "`npx skills add` failed. Try manually: npx -y skills add {} --skill {} -y{}",
             SKILLS_REPO,
             SKILL_NAME,
             if global { " -g" } else { "" }

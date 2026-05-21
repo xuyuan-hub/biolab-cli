@@ -1,4 +1,4 @@
-# Biolab CLI 安装指南
+﻿# Biolab CLI 安装指南
 
 以下步骤面向 AI Agent。部分步骤需要用户在浏览器中配合完成飞书 OAuth 授权。
 
@@ -68,7 +68,7 @@ biolab skills install --global
 也可以使用通用 skills 安装方式：
 
 ```shell
-npx -y skills add xuyuan-hub/biolab-cli -s biolab-api -y -g
+npx -y skills add xuyuan-hub/biolab-cli --skill biolab-api -y -g
 ```
 
 `biolab skills install --global` 会委托给标准 `skills` 安装器，效果等价于上面的 `npx skills add` 命令。这样 Hermes、Claude Code、Codex 等 agent 可以按各自机制刷新 skill 索引。
