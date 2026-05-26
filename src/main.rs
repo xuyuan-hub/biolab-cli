@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
-use biolab::commands::{inventory, lab, orders, skills, templates, update, users};
+use biolab::commands::{inventory, lab, orders, projects, skills, templates, update, users};
 use biolab::config::Config;
 use biolab::output::OutputFormat;
 use biolab::{check_status, login, logout, poll_login_from_env, LoginMode};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 
-/// Biolab CLI — 实验管理系统客户端
+/// Biolab lab management CLI.
 #[derive(Parser)]
 #[command(name = "biolab", version, about, long_about = None)]
 struct Cli {
-    /// 输出格式
+    /// Output format.
     #[arg(short, long, value_enum, default_value_t = OutputFormatArg::Text, global = true)]
     format: OutputFormatArg,
 
@@ -36,41 +36,44 @@ impl From<&OutputFormatArg> for OutputFormat {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// 飞书 OAuth 登录
+    /// Feishu OAuth login.
     Login(LoginArgs),
-    /// 后台完成登录轮询（内部命令）
+    /// Finish background login polling.
     #[command(hide = true)]
     LoginPoll,
-    /// 登出（删除本地 token）
+    /// Log out and remove the local token.
     Logout,
-    /// 检查登录状态
+    /// Check login status.
     Status,
 
-    /// 用户管理
+    /// Current user management.
     Me(users::MeArgs),
 
-    /// 订单管理
+    /// Order management.
     Orders(orders::OrdersArgs),
 
-    /// 模板管理
+    /// Template management.
     Templates(templates::TemplatesArgs),
 
-    /// 库存管理
+    /// Inventory management.
     Inventory(inventory::InventoryArgs),
 
-    /// 课题组管理
+    /// Lab management.
     Lab(lab::LabArgs),
 
-    /// AI agent skill installation and checks
+    /// Project management.
+    Projects(projects::ProjectsArgs),
+
+    /// AI agent skill installation and checks.
     Skills(skills::SkillsArgs),
 
-    /// 检查 CLI 更新
+    /// Check CLI updates.
     Update(update::UpdateArgs),
 }
 
 #[derive(Args)]
 struct LoginArgs {
-    /// 后台等待用户授权，适合 AI Agent 使用
+    /// Run login polling in the background for agent workflows.
     #[arg(long, alias = "no-wait")]
     background: bool,
 }
@@ -83,8 +86,8 @@ async fn main() {
 
     let result = match cli.command {
         None => {
-            println!("{}", "Biolab 实验管理系统 CLI".bold());
-            println!("\n使用 biolab --help 查看可用命令\n");
+            println!("{}", "Biolab CLI".bold());
+            println!("\nRun biolab --help to see available commands.\n");
             return;
         }
         Some(Commands::Login(args)) => {
@@ -118,12 +121,13 @@ async fn main() {
         Some(Commands::Templates(args)) => templates::run(&args, &config, &format).await,
         Some(Commands::Inventory(args)) => inventory::run(&args, &config, &format).await,
         Some(Commands::Lab(args)) => lab::run(&args, &config, &format).await,
+        Some(Commands::Projects(args)) => projects::run(&args, &config, &format).await,
         Some(Commands::Skills(args)) => skills::run(&args, &format),
         Some(Commands::Update(args)) => update::run(&args, &format).await,
     };
 
     if let Err(e) = result {
-        eprintln!("{}: {e}", "错误".red().bold());
+        eprintln!("{}: {e}", "Error".red().bold());
         std::process::exit(1);
     }
 }

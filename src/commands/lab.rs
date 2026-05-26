@@ -4,7 +4,9 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{print_lab_members, print_result, OutputFormat};
+use crate::output::{
+    print_lab_members, print_order_brief, print_result, print_stocks, OutputFormat,
+};
 
 #[derive(Args)]
 pub struct LabArgs {
@@ -14,47 +16,53 @@ pub struct LabArgs {
 
 #[derive(Subcommand)]
 pub enum LabCommand {
-    /// 课题组信息
+    /// Show lab information.
     Info,
-    /// 创建课题组
+    /// Create a lab.
     Create { name: String },
-    /// 更新课题组设置
+    /// Update lab settings with a JSON object.
     Update { data: String },
-    /// 成员列表
+    /// List all orders in my lab.
+    Orders,
+    /// Show lab order statistics.
+    OrdersStats,
+    /// List shared lab inventory.
+    Inventory,
+    /// List lab members.
     Members,
-    /// 修改成员角色
+    /// Update member role.
     UpdateRole { user_id: String, role: String },
-    /// 移除成员
+    /// Remove a member.
     RemoveMember { user_id: String },
-    /// 邀请成员
+    /// Invite a member.
     Invite {
         email: String,
         #[arg(default_value = "member")]
         role: String,
     },
-    /// 查看邀请
+    /// List invitations.
     Invitations,
-    /// 接受邀请
+    /// Accept an invitation.
     AcceptInvite { invitation_id: String },
-    /// 拒绝邀请
+    /// Decline an invitation.
     DeclineInvite { invitation_id: String },
-    /// 申请加入课题组
+    /// Apply to join a lab.
     Join {
         lab_id: String,
         #[arg(default_value = "member")]
         role: String,
     },
-    /// 查看入组申请（PI）
+    /// List join applications.
     Applications,
-    /// 批准申请（PI）
+    /// Approve a join application.
     ApproveApp { application_id: String },
-    /// 拒绝申请（PI）
+    /// Reject a join application.
     RejectApp { application_id: String },
-    /// 审批规则列表
+    /// List approval rules.
     ApprovalRules,
-    /// 添加审批规则
+    /// Add an approval rule from a JSON object.
     AddRule { data: String },
-    /// 删除审批规则
+    /// Remove an approval rule.
     RemoveRule { rule_id: String },
 }
 
@@ -78,6 +86,32 @@ pub async fn run(
             let data: serde_json::Value = serde_json::from_str(data)?;
             let lab = client.update_lab(&data).await?;
             print_result(&lab, format);
+        }
+        LabCommand::Orders => {
+            let orders = client.list_lab_orders().await?;
+            match format {
+                OutputFormat::Json => print_result(&orders, format),
+                OutputFormat::Text => {
+                    if orders.is_empty() {
+                        println!("No lab orders");
+                    } else {
+                        for order in &orders {
+                            print_order_brief(order);
+                        }
+                    }
+                }
+            }
+        }
+        LabCommand::OrdersStats => {
+            let stats = client.get_lab_order_stats().await?;
+            print_result(&stats, format);
+        }
+        LabCommand::Inventory => {
+            let stocks = client.list_lab_inventory().await?;
+            match format {
+                OutputFormat::Json => print_result(&stocks, format),
+                OutputFormat::Text => print_stocks(&stocks),
+            }
         }
         LabCommand::Members => {
             let members = client.list_lab_members().await?;

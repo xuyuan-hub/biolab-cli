@@ -2,7 +2,7 @@ use crate::api_response::{envelope_data, extract_array, extract_object};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
 use crate::services::{empty_body, single_field_body};
-use crate::types::{Application, ApprovalRule, Invitation, Lab, LabMember};
+use crate::types::{Application, ApprovalRule, Invitation, Lab, LabMember, Order, Stock};
 
 impl BiolabClient {
     pub async fn get_lab(&self) -> Result<Lab, BiolabError> {
@@ -21,6 +21,21 @@ impl BiolabClient {
     pub async fn update_lab(&self, data: &serde_json::Value) -> Result<Lab, BiolabError> {
         let resp: serde_json::Value = self.http.patch("/lab", data).await?;
         extract_object(resp)
+    }
+
+    pub async fn list_lab_orders(&self) -> Result<Vec<Order>, BiolabError> {
+        let resp: serde_json::Value = self.http.get(lab_orders_path()).await?;
+        extract_array(resp)
+    }
+
+    pub async fn get_lab_order_stats(&self) -> Result<serde_json::Value, BiolabError> {
+        let resp: serde_json::Value = self.http.get(lab_order_stats_path()).await?;
+        Ok(envelope_data(resp))
+    }
+
+    pub async fn list_lab_inventory(&self) -> Result<Vec<Stock>, BiolabError> {
+        let resp: serde_json::Value = self.http.get(lab_inventory_path()).await?;
+        extract_array(resp)
     }
 
     pub async fn list_lab_members(&self) -> Result<Vec<LabMember>, BiolabError> {
@@ -156,6 +171,18 @@ fn member_path(user_id: &str) -> String {
     format!("/lab/members/{user_id}")
 }
 
+fn lab_orders_path() -> &'static str {
+    "/lab/orders"
+}
+
+fn lab_order_stats_path() -> &'static str {
+    "/lab/orders/stats"
+}
+
+fn lab_inventory_path() -> &'static str {
+    "/lab/inventory/stocks"
+}
+
 fn invitation_action_path(invitation_id: &str, action: &str) -> String {
     format!("/lab/invitations/{invitation_id}/{action}")
 }
@@ -196,6 +223,9 @@ mod tests {
     #[test]
     fn builds_lab_member_and_join_paths() {
         assert_eq!(member_path("user-1"), "/lab/members/user-1");
+        assert_eq!(lab_orders_path(), "/lab/orders");
+        assert_eq!(lab_order_stats_path(), "/lab/orders/stats");
+        assert_eq!(lab_inventory_path(), "/lab/inventory/stocks");
         assert_eq!(join_lab_path("lab-1"), "/lab/join/lab-1");
         assert_eq!(approval_rule_path("rule-1"), "/lab/approval-rules/rule-1");
     }

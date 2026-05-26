@@ -14,7 +14,7 @@ pub struct InventoryArgs {
 
 #[derive(Subcommand)]
 pub enum InventoryCommand {
-    /// 库存列表
+    /// List inventory stocks.
     List {
         #[arg(long)]
         primer_name: Option<String>,
@@ -23,11 +23,17 @@ pub enum InventoryCommand {
         #[arg(long)]
         low_stock: bool,
     },
-    /// 库存详情（含交易记录）
+    /// Show inventory stock details.
     Get { id: String },
-    /// 库存统计
+    /// Show inventory stock transactions.
+    Transactions { id: String },
+    /// Show inventory statistics.
     Stats,
-    /// 入库
+    /// Show inventory preferences.
+    Preferences,
+    /// Update inventory preferences with a JSON object.
+    SetPreferences { data: String },
+    /// Check in stock.
     Checkin {
         id: String,
         #[arg(long)]
@@ -35,7 +41,7 @@ pub enum InventoryCommand {
         #[arg(long, default_value = "")]
         purpose: String,
     },
-    /// 出库
+    /// Check out stock.
     Checkout {
         id: String,
         #[arg(long)]
@@ -45,9 +51,9 @@ pub enum InventoryCommand {
         #[arg(long, default_value = "")]
         experiment_ref: String,
     },
-    /// 存储位置列表
+    /// List storage locations.
     Locations,
-    /// 创建存储位置
+    /// Create a storage location.
     CreateLocation {
         name: String,
         #[arg(long)]
@@ -80,9 +86,22 @@ pub async fn run(
             let stock = client.get_stock(id).await?;
             print_result(&stock, format);
         }
+        InventoryCommand::Transactions { id } => {
+            let transactions = client.list_stock_transactions(id).await?;
+            print_result(&transactions, format);
+        }
         InventoryCommand::Stats => {
             let stats = client.get_stock_stats().await?;
             print_result(&stats, format);
+        }
+        InventoryCommand::Preferences => {
+            let preferences = client.get_inventory_preferences().await?;
+            print_result(&preferences, format);
+        }
+        InventoryCommand::SetPreferences { data } => {
+            let data: serde_json::Value = serde_json::from_str(data)?;
+            let preferences = client.set_inventory_preferences(&data).await?;
+            print_result(&preferences, format);
         }
         InventoryCommand::Checkin {
             id,

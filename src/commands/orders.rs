@@ -14,42 +14,52 @@ pub struct OrdersArgs {
 
 #[derive(Subcommand)]
 pub enum OrdersCommand {
-    /// 订单列表
+    /// Show order statistics.
+    Stats,
+    /// List orders.
     List {
         #[arg(short, long, default_value_t = 0)]
         skip: u32,
         #[arg(short, long, default_value_t = 100)]
         limit: u32,
     },
-    /// 订单详情
+    /// List orders waiting for my approval.
+    PendingApprovals,
+    /// Show order details.
     Get { id: String },
-    /// 创建引物合成订单（从 JSON 文件）
+    /// Create a primer synthesis order from a JSON file.
     CreatePrimer { file: String },
-    /// 创建测序订单（从 JSON 文件）
+    /// Create a sequencing order from a JSON file.
     CreateSequencing { file: String },
-    /// 更新订单
+    /// Update an order with a JSON object.
     Update { id: String, data: String },
-    /// 重发邮件（pending 状态订单）
+    /// Resend order email for pending orders.
     Resend { id: String },
-    /// 下载订单 Excel
+    /// Send order email.
+    Send { id: String },
+    /// Approve an order.
+    Approve { id: String },
+    /// Reject an order.
+    Reject { id: String },
+    /// Download order Excel.
     Download {
         id: String,
         #[arg(default_value = "order.xlsx")]
         output: String,
     },
-    /// 下载引物 Excel 模板
+    /// Download primer Excel template.
     DownloadPrimerTemplate {
         #[arg(default_value = "primer_template.xlsx")]
         output: String,
     },
-    /// 下载测序 Excel 模板
+    /// Download sequencing Excel template.
     DownloadSequencingTemplate {
         #[arg(default_value = "sequencing_template.xlsx")]
         output: String,
     },
-    /// 上传引物 Excel 解析
+    /// Upload and parse primer Excel.
     UploadPrimerExcel { file: String },
-    /// 上传测序 Excel 解析
+    /// Upload and parse sequencing Excel.
     UploadSequencingExcel { file: String },
 }
 
@@ -61,10 +71,29 @@ pub async fn run(
     let client = BiolabClient::new(Arc::clone(config))?;
 
     match &args.command {
+        OrdersCommand::Stats => {
+            let stats = client.get_order_stats().await?;
+            print_result(&stats, format);
+        }
         OrdersCommand::List { skip, limit } => {
             let orders = client.list_orders(*skip, *limit).await?;
             if orders.is_empty() {
-                println!("暂无订单");
+                println!("No orders");
+                return Ok(());
+            }
+            match format {
+                OutputFormat::Json => print_result(&orders, format),
+                OutputFormat::Text => {
+                    for o in &orders {
+                        print_order_brief(o);
+                    }
+                }
+            }
+        }
+        OrdersCommand::PendingApprovals => {
+            let orders = client.list_pending_approvals().await?;
+            if orders.is_empty() {
+                println!("No pending approvals");
                 return Ok(());
             }
             match format {
@@ -111,30 +140,42 @@ pub async fn run(
         }
         OrdersCommand::Resend { id } => {
             let result = client.resend_order(id).await?;
-            print_result(&result, &OutputFormat::Json);
+            print_result(&result, format);
+        }
+        OrdersCommand::Send { id } => {
+            let result = client.send_order(id).await?;
+            print_result(&result, format);
+        }
+        OrdersCommand::Approve { id } => {
+            let result = client.approve_order(id).await?;
+            print_result(&result, format);
+        }
+        OrdersCommand::Reject { id } => {
+            let result = client.reject_order(id).await?;
+            print_result(&result, format);
         }
         OrdersCommand::Download { id, output } => {
             let bytes = client.download_order(id).await?;
             std::fs::write(output, &bytes)?;
-            println!("已下载到 {output}");
+            println!("Downloaded to {output}");
         }
         OrdersCommand::DownloadPrimerTemplate { output } => {
             let bytes = client.download_primer_template().await?;
             std::fs::write(output, &bytes)?;
-            println!("已下载到 {output}");
+            println!("Downloaded to {output}");
         }
         OrdersCommand::DownloadSequencingTemplate { output } => {
             let bytes = client.download_sequencing_template().await?;
             std::fs::write(output, &bytes)?;
-            println!("已下载到 {output}");
+            println!("Downloaded to {output}");
         }
         OrdersCommand::UploadPrimerExcel { file } => {
             let result = client.upload_primer_excel(file).await?;
-            print_result(&result, &OutputFormat::Json);
+            print_result(&result, format);
         }
         OrdersCommand::UploadSequencingExcel { file } => {
             let result = client.upload_sequencing_excel(file).await?;
-            print_result(&result, &OutputFormat::Json);
+            print_result(&result, format);
         }
     }
     Ok(())

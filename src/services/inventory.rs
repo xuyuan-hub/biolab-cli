@@ -1,8 +1,8 @@
-use crate::api_response::{extract_array, extract_object};
+use crate::api_response::{envelope_data, extract_array, extract_object};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
 use crate::services::url_encode;
-use crate::types::{Location, Stock, StockStats};
+use crate::types::{Location, Stock, StockStats, Transaction};
 
 impl BiolabClient {
     pub async fn list_stocks(
@@ -23,9 +23,30 @@ impl BiolabClient {
         extract_object(resp)
     }
 
+    pub async fn list_stock_transactions(
+        &self,
+        stock_id: &str,
+    ) -> Result<Vec<Transaction>, BiolabError> {
+        let resp: serde_json::Value = self.http.get(&stock_transactions_path(stock_id)).await?;
+        extract_array(resp)
+    }
+
     pub async fn get_stock_stats(&self) -> Result<StockStats, BiolabError> {
         let resp: serde_json::Value = self.http.get("/inventory/stats").await?;
         extract_object(resp)
+    }
+
+    pub async fn get_inventory_preferences(&self) -> Result<serde_json::Value, BiolabError> {
+        let resp: serde_json::Value = self.http.get("/inventory/preferences").await?;
+        Ok(envelope_data(resp))
+    }
+
+    pub async fn set_inventory_preferences(
+        &self,
+        data: &serde_json::Value,
+    ) -> Result<serde_json::Value, BiolabError> {
+        let resp: serde_json::Value = self.http.put("/inventory/preferences", data).await?;
+        Ok(envelope_data(resp))
     }
 
     pub async fn checkin(
@@ -103,6 +124,10 @@ fn stock_path(stock_id: &str) -> String {
     format!("/inventory/stocks/{stock_id}")
 }
 
+fn stock_transactions_path(stock_id: &str) -> String {
+    format!("/inventory/stocks/{stock_id}/transactions")
+}
+
 fn checkin_path(stock_id: &str) -> String {
     format!("/inventory/stocks/{stock_id}/checkin")
 }
@@ -154,6 +179,10 @@ mod tests {
     #[test]
     fn builds_stock_action_paths() {
         assert_eq!(stock_path("stock-1"), "/inventory/stocks/stock-1");
+        assert_eq!(
+            stock_transactions_path("stock-1"),
+            "/inventory/stocks/stock-1/transactions"
+        );
         assert_eq!(checkin_path("stock-1"), "/inventory/stocks/stock-1/checkin");
         assert_eq!(
             checkout_path("stock-1"),

@@ -14,6 +14,16 @@ impl BiolabClient {
         extract_object(resp)
     }
 
+    pub async fn get_order_stats(&self) -> Result<serde_json::Value, BiolabError> {
+        let resp: serde_json::Value = self.http.get("/orders/stats").await?;
+        Ok(envelope_data(resp))
+    }
+
+    pub async fn list_pending_approvals(&self) -> Result<Vec<Order>, BiolabError> {
+        let resp: serde_json::Value = self.http.get("/orders/approvals/pending").await?;
+        extract_array(resp)
+    }
+
     pub async fn create_primer_order(
         &self,
         order: &serde_json::Value,
@@ -40,9 +50,35 @@ impl BiolabClient {
     }
 
     pub async fn resend_order(&self, order_id: &str) -> Result<serde_json::Value, BiolabError> {
+        self.send_order(order_id).await
+    }
+
+    pub async fn send_order(&self, order_id: &str) -> Result<serde_json::Value, BiolabError> {
         let resp: serde_json::Value = self
             .http
-            .post(&resend_order_path(order_id), &serde_json::json!({}))
+            .post(&send_order_path(order_id), &serde_json::json!({}))
+            .await?;
+        Ok(envelope_data(resp))
+    }
+
+    pub async fn approve_order(&self, order_id: &str) -> Result<serde_json::Value, BiolabError> {
+        let resp: serde_json::Value = self
+            .http
+            .post(
+                &order_action_path(order_id, "approve"),
+                &serde_json::json!({}),
+            )
+            .await?;
+        Ok(envelope_data(resp))
+    }
+
+    pub async fn reject_order(&self, order_id: &str) -> Result<serde_json::Value, BiolabError> {
+        let resp: serde_json::Value = self
+            .http
+            .post(
+                &order_action_path(order_id, "reject"),
+                &serde_json::json!({}),
+            )
             .await?;
         Ok(envelope_data(resp))
     }
@@ -94,8 +130,12 @@ fn order_path(order_id: &str) -> String {
     format!("/orders/{order_id}")
 }
 
-fn resend_order_path(order_id: &str) -> String {
+fn send_order_path(order_id: &str) -> String {
     format!("/orders/{order_id}/send")
+}
+
+fn order_action_path(order_id: &str, action: &str) -> String {
+    format!("/orders/{order_id}/{action}")
 }
 
 fn download_order_path(order_id: &str) -> String {
@@ -114,7 +154,15 @@ mod tests {
     #[test]
     fn builds_order_detail_and_action_paths() {
         assert_eq!(order_path("ord_123"), "/orders/ord_123");
-        assert_eq!(resend_order_path("ord_123"), "/orders/ord_123/send");
+        assert_eq!(send_order_path("ord_123"), "/orders/ord_123/send");
+        assert_eq!(
+            order_action_path("ord_123", "approve"),
+            "/orders/ord_123/approve"
+        );
+        assert_eq!(
+            order_action_path("ord_123", "reject"),
+            "/orders/ord_123/reject"
+        );
         assert_eq!(download_order_path("ord_123"), "/orders/ord_123/download");
     }
 }
