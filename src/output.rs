@@ -1,7 +1,15 @@
+use std::fs;
+use std::time::SystemTime;
+
 use colored::Colorize;
 use serde::Serialize;
 
+use crate::api_response::PaginatedList;
 use crate::types::*;
+
+/// Maximum number of items to print to the terminal before writing to a file.
+/// Prevents terminal hangs when a query returns hundreds or thousands of records.
+const MAX_TERMINAL_ITEMS: usize = 10;
 
 #[derive(Debug, Clone, clap::ValueEnum)]
 pub enum OutputFormat {
@@ -11,6 +19,48 @@ pub enum OutputFormat {
 
 pub fn print_result<T: Serialize>(value: &T, _format: &OutputFormat) {
     let json = serde_json::to_string_pretty(value).unwrap_or_default();
+    println!("{json}");
+}
+
+/// Return a path for a temporary output file in the current working directory.
+fn temp_output_path(prefix: &str, ext: &str) -> std::path::PathBuf {
+    let ts = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    std::path::PathBuf::from(format!("{prefix}_{ts}.{ext}"))
+}
+
+/// Write a value to a file and print the file path. Returns `true` if the
+/// output was redirected to a file (because the item count exceeded the limit).
+fn write_large_output<T: Serialize>(value: &T, item_count: usize) -> bool {
+    if item_count <= MAX_TERMINAL_ITEMS {
+        return false;
+    }
+    let path = temp_output_path("output", "json");
+    let json = serde_json::to_string_pretty(value).unwrap_or_default();
+    if fs::write(&path, json).is_ok() {
+        println!("结果共 {} 条，已写入文件: {}", item_count, path.display());
+        return true;
+    }
+    false
+}
+
+/// Print a paginated list. If the number of items on this page exceeds
+/// `MAX_TERMINAL_ITEMS`, write the JSON to a file and print the path instead.
+pub fn print_paginated_items<T: Serialize>(list: &PaginatedList<T>) {
+    if write_large_output(&list.items, list.items.len()) {
+        if list.total_pages.is_some() {
+            println!("共 {count} 条，第 {page}/{total_pages} 页", count = list.count, page = list.current_page.unwrap_or(1), total_pages = list.total_pages.unwrap_or(1));
+        }
+        return;
+    }
+    let json = serde_json::to_string_pretty(&list.items).unwrap_or_default();
+    if list.total_pages.is_some() {
+        println!("共 {count} 条，第 {page}/{total_pages} 页", count = list.count, page = list.current_page.unwrap_or(1), total_pages = list.total_pages.unwrap_or(1));
+    } else {
+        println!("共 {} 条", list.count);
+    }
     println!("{json}");
 }
 
@@ -151,5 +201,42 @@ pub fn print_templates(templates: &[Template]) {
 pub fn print_lab_members(members: &[LabMember]) {
     for m in members {
         println!("{}  {:12}  {:24}  {}", m.id, m.full_name, m.email, m.role);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    /// Verify that JSON serialization of Chinese text preserves UTF-8 correctly.
+    /// This guards against Windows console encoding regressions where UTF-8 bytes
+    /// are misinterpreted as the system code page (e.g. GBK / CP936).
+    #[test]
+    fn json_output_preserves_chinese_utf8() {
+        let record = json!({
+            "name": "京科968父本",
+            "alias_name": "京92",
+            "accession_no": "TS24-021",
+            "object_name": "inbred"
+        });
+
+        let output = serde_json::to_string_pretty(&record).unwrap();
+        assert!(output.contains("京科968父本"), "Chinese characters must survive JSON serialization: {output}");
+        assert!(output.contains("京92"), "alias_name should contain Chinese: {output}");
+    }
+
+    /// Verify that a list of Chinese germplasm records serializes correctly.
+    #[test]
+    fn json_list_output_preserves_chinese_utf8() {
+        let records = vec![
+            json!({ "name": "京科968DH", "id": "SH000157" }),
+            json!({ "name": "京科968母本", "id": "SH000022" }),
+            json!({ "name": "迪卡父1", "id": "SH000001" }),
+        ];
+
+        let output = serde_json::to_string_pretty(&records).unwrap();
+        assert!(output.contains("京科968DH"));
+        assert!(output.contains("京科968母本"));
+        assert!(output.contains("迪卡父1"));
     }
 }

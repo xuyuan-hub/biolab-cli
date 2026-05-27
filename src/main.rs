@@ -83,8 +83,20 @@ struct LoginArgs {
     background: bool,
 }
 
+/// Set Windows console output to UTF-8 so that Chinese and other Unicode text
+/// renders correctly when the CLI prints to a terminal.
+#[cfg(windows)]
+fn setup_console_utf8() {
+    use windows_sys::Win32::System::Console::SetConsoleOutputCP;
+    unsafe { SetConsoleOutputCP(65001) };
+}
+
+#[cfg(not(windows))]
+fn setup_console_utf8() {}
+
 #[tokio::main]
 async fn main() {
+    setup_console_utf8();
     let cli = Cli::parse();
     let config = Arc::new(Config::new());
     let format = OutputFormat::from(&cli.format);

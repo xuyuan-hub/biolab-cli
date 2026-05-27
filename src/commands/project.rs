@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{print_result, OutputFormat};
+use crate::output::{print_paginated_items, print_result, OutputFormat};
 
 #[derive(Args)]
 pub struct ProjectArgs {
@@ -118,7 +118,10 @@ async fn run_germplasm(
             let records = client
                 .list_project_germplasm(slug, *skip, *limit, search.as_deref(), filters.as_deref())
                 .await?;
-            print_result(&records, format);
+            match format {
+                OutputFormat::Json => print_result(&records, format),
+                OutputFormat::Text => print_paginated_items(&records),
+            }
         }
         GermplasmCommand::Get { id } => {
             let record = client.get_project_germplasm(slug, id).await?;
@@ -163,7 +166,10 @@ async fn run_planting(
             let orders = client
                 .list_project_planting_orders(slug, *skip, *limit)
                 .await?;
-            print_result(&orders, format);
+            match format {
+                OutputFormat::Json => print_result(&orders, format),
+                OutputFormat::Text => print_paginated_items(&orders),
+            }
         }
         PlantingCommand::Get { id } => {
             let order = client.get_project_planting_order(slug, id).await?;

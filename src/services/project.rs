@@ -1,4 +1,4 @@
-use crate::api_response::{envelope_data, extract_array};
+use crate::api_response::{envelope_data, extract_array, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
 use crate::services::url_encode;
@@ -16,14 +16,14 @@ impl BiolabClient {
         limit: u32,
         search: Option<&str>,
         filters: Option<&str>,
-    ) -> Result<Vec<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_germplasm_list_path(
                 slug, skip, limit, search, filters,
             ))
             .await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn create_project_germplasm(
@@ -109,12 +109,12 @@ impl BiolabClient {
         slug: &str,
         skip: u32,
         limit: u32,
-    ) -> Result<Vec<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_planting_list_path(slug, skip, limit))
             .await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn create_project_planting_order(

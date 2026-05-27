@@ -1,6 +1,6 @@
 [package]
 name = "biolab-cli"
-version = "0.2.8"
+version = "0.3.0"
 edition = "2021"
 description = "CLI client for the Biolab order system (primer synthesis + sequencing), inventory, and lab management"
 
@@ -32,6 +32,7 @@ keyring = { version = "3", features = ["apple-native"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
+windows-sys = { version = "0.59", features = ["Win32_System_Console"] }
 
 [profile.release]
 strip = true
