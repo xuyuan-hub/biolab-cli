@@ -143,18 +143,6 @@ After installing skills via `npx skills add` or `biolab skills install`, the Age
 
 The Agent skills are installed by the standard `skills` installer. Domain skills point back to `biolab-shared` for auth and OpenAPI schema rules.
 
-### Agent Order Workflow
-
-When asked to create an order, the Agent follows this sequence:
-
-1. **Check auth** — `biolab status`. Not logged in = 401 failure.
-2. **Get user info** — `biolab me -f json`. Check `phone_number` is not empty.
-3. **Check OpenAPI schema** — inspect `<BIOLAB_BASE_URL>/openapi.json` before writing request JSON.
-4. **Check default template** — `biolab templates get-default primer_synthesis -f json`. Template stores company, address, PI, payment, and notes.
-5. **Confirm options** — Supplier and primer item fields from `PrimerOrderCreate` / `PrimerItemCreate`; never assume defaults.
-6. **Extract primers** — From user-provided documents (Excel/text/chat).
-7. **Build JSON & submit** — Merge template defaults + user options + extracted primers → temp JSON → `biolab orders create-primer <file>`.
-
 ## Authentication
 
 | Command | Description |
@@ -269,7 +257,7 @@ Multi-platform builds via GitHub Actions on every push:
 * Windows (x86_64)
 * macOS (x86_64 + arm64)
 
-`cargo test` runs before build — 23 unit tests must pass.
+`cargo test` runs before build — 45 unit tests must pass.
 
 Tagged pushes (e.g. `v0.1.0`) auto-create GitHub Releases with binaries.
 
@@ -432,18 +420,6 @@ biolab skills install --global
 
 Agent skills 会由标准 `skills` 安装器一次性安装；领域 skill 会回指 `biolab-shared` 获取认证和 OpenAPI schema 规则。
 
-### Agent 下单工作流
-
-被要求创建订单时，Agent 按以下顺序执行：
-
-1. **检查登录** —— `biolab status`。未登录 = 401 失败。
-2. **获取用户信息** —— `biolab me -f json`。检查 `phone_number` 是否为空。
-3. **检查 OpenAPI schema** —— 写请求 JSON 前先查 `<BIOLAB_BASE_URL>/openapi.json`。
-4. **检查默认模板** —— `biolab templates get-default primer_synthesis -f json`。模板存储单位、地址、PI、付款方式、备注。
-5. **确认选项** —— 供应商和 `PrimerOrderCreate` / `PrimerItemCreate` 字段，绝不假设默认值。
-6. **提取引物** —— 从用户提供的文档（Excel/文本/聊天记录）中提取。
-7. **构建 JSON 并提交** —— 合并模板默认值 + 用户确认的选项 + 提取的引物 → 临时 JSON 文件 → `biolab orders create-primer <文件>`。
-
 ## 认证
 
 | 命令 | 描述 |
@@ -558,7 +534,7 @@ src/
 * Windows（x86_64）
 * macOS（x86_64 + arm64）
 
-构建前运行 `cargo test` —— 23 个单元测试必须通过。
+构建前运行 `cargo test` —— 45 个单元测试必须通过。
 
 打标签推送（如 `v0.1.0`）自动创建 GitHub Release 并附带二进制文件。
 
