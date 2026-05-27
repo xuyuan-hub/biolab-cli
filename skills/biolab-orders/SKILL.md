@@ -47,26 +47,80 @@ Relevant schemas:
 
 ## Primer Purchase Workflow
 
+### Step 1: Collect primer information — two paths
+
+Ask the user how they want to provide primer information: Excel upload or manual input.
+
+**Path A — Excel upload**
+
+1. Run `biolab orders download-primer-template primer_template.xlsx` to get the standard primer ordering spreadsheet.
+2. User fills out the template or their own Excel file.
+3. Run `biolab orders upload-primer-excel <file.xlsx> -f json` to parse and validate.
+4. Review the parsed items with the user, then proceed to Step 2.
+
+**Path B — Provide primer fields for manual input**
+
+Present the user with the complete `PrimerItemCreate` field reference below. Ask them to provide primer information in any format (text, chat, JSON). Build the items array from their input, then proceed to Step 2.
+
+#### `PrimerItemCreate` — Complete Field Reference
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `primer_name` | string (max 255) | **Yes** | Primer identifier, e.g. `FWD-JK968` |
+| `sequence` | string (max 5000) | **Yes** | Nucleotide sequence, e.g. `ATGCGATCGATCGATCGA` |
+| `base_count` | integer \| null | No | Length of the sequence in bases |
+| `purification_method` | string \| null | No | e.g. `Desalt`, `HPLC`, `PAGE` |
+| `nmoles` | number \| string \| null | No | Synthesis scale in nanomoles |
+| `scale_od` | number \| string \| null | No | OD scale value |
+| `tube_count` | integer \| null | No | Number of tubes requested |
+| `deliverable_form` | string \| null | No | e.g. `Dry`, `Liquid` |
+| `five_modification` | string (max 128) \| null | No | 5' end modification |
+| `three_modification` | string (max 128) \| null | No | 3' end modification |
+| `double_modification` | string (max 128) \| null | No | Dual-end modification |
+| `primer_type` | string (max 100) \| null | No | e.g. `PCR`, `Sequencing` |
+| `remarks` | string (max 1000) \| null | No | Free-text notes |
+
+Only `primer_name` and `sequence` are required. All other fields are optional.
+
+### Step 2: Confirm order-level fields
+
 1. Read the default `primer_synthesis` template through `biolab-templates`.
-2. Confirm template fields with the user.
-3. Confirm contact fields, usually from `biolab me -f json`.
-4. Collect supplier and primer items.
-5. Build order JSON from OpenAPI schema.
-6. Show the final summary and ask for explicit confirmation.
-7. Run `biolab orders create-primer order.json -f json`.
+2. Confirm contact fields, usually from `biolab me -f json`.
+3. Confirm supplier (`sangon` or `biosune`).
+4. Preserve order-level `notes` from the confirmed template unless the user overrides.
 
-At the time of writing, `PrimerItemCreate` requires only:
+#### `PrimerOrderCreate` — Order-Level Fields
 
-```json
-{
-  "primer_name": "FWD",
-  "sequence": "ATGC"
-}
-```
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `type` | string | `primer_synthesis` | Must be `primer_synthesis` |
+| `status` | OrderStatus | `pending` | Initial order status |
+| `lab_id` | uuid \| null | | Lab to place the order under |
+| `supplier_name` | string \| null | | `sangon` or `biosune` |
+| `supplier_email` | string \| null | | Supplier contact email |
+| `customer_name` | string \| null | | Contact person name |
+| `customer_phone` | string \| null | | Contact phone |
+| `customer_email` | string \| null | | Contact email |
+| `company_name` | string \| null | | Company for invoicing |
+| `company_phone` | string \| null | | Company phone |
+| `invoice_title` | string \| null | | Invoice title |
+| `principal_investigator` | string \| null | | PI name |
+| `payment_method` | string \| null | | Payment method |
+| `recipient_address` | string \| null | | Shipping address |
+| `total_price` | number \| string \| null | | Total order price |
+| `notes` | string \| null | | Order notes |
+| `confidential` | boolean | `false` | Confidential flag |
+| `primer_count` | integer | `0` | Number of primers |
+| `total_bases` | integer | `0` | Total base count |
+| `weekend_delivery` | boolean | `false` | Weekend delivery flag |
+| `partial_delivery` | boolean | `false` | Partial delivery flag |
+| `items` | PrimerItemCreate[] | `[]` | Primer items |
 
-Optional item fields currently include `base_count`, `purification_method`, `nmoles`, `scale_od`, `tube_count`, `deliverable_form`, `five_modification`, `three_modification`, `double_modification`, `primer_type`, and `remarks`.
+### Step 3: Build, confirm, and submit
 
-Preserve order-level `notes` from the confirmed template unless the user overrides them.
+1. Build the complete order JSON combining: order-level fields + primer items.
+2. Show the final summary to the user and ask for explicit confirmation.
+3. Run `biolab orders create-primer order.json -f json`.
 
 ## Rules
 
