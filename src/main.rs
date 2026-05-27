@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use biolab::commands::{inventory, lab, orders, projects, skills, templates, update, users};
+use biolab::commands::{
+    inventory, lab, orders, project, projects, skills, templates, update, users,
+};
 use biolab::config::Config;
 use biolab::output::OutputFormat;
 use biolab::{check_status, login, logout, poll_login_from_env, LoginMode};
@@ -60,6 +62,9 @@ enum Commands {
 
     /// Lab management.
     Lab(lab::LabArgs),
+
+    /// Project-scoped workflows by slug.
+    Project(project::ProjectArgs),
 
     /// Project management.
     Projects(projects::ProjectsArgs),
@@ -121,6 +126,7 @@ async fn main() {
         Some(Commands::Templates(args)) => templates::run(&args, &config, &format).await,
         Some(Commands::Inventory(args)) => inventory::run(&args, &config, &format).await,
         Some(Commands::Lab(args)) => lab::run(&args, &config, &format).await,
+        Some(Commands::Project(args)) => project::run(&args, &config, &format).await,
         Some(Commands::Projects(args)) => projects::run(&args, &config, &format).await,
         Some(Commands::Skills(args)) => skills::run(&args, &format),
         Some(Commands::Update(args)) => update::run(&args, &format).await,

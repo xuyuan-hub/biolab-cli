@@ -1,6 +1,7 @@
 mod inventory;
 mod lab;
 mod orders;
+mod project;
 mod projects;
 mod templates;
 mod users;

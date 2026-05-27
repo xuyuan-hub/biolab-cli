@@ -1,6 +1,7 @@
 pub mod inventory;
 pub mod lab;
 pub mod orders;
+pub mod project;
 pub mod projects;
 pub mod skills;
 pub mod templates;

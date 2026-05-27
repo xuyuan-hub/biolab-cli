@@ -1,0 +1,139 @@
+# Biolab CLI Command Reference
+
+This page contains the longer command catalog. The README keeps only quick-start and high-level guidance.
+
+All commands support `-f json` for machine-readable output.
+
+## Orders
+
+```bash
+biolab orders list --skip 0 --limit 100
+biolab orders stats
+biolab orders pending-approvals
+biolab orders get <ID>
+biolab orders create-primer order.json
+biolab orders create-sequencing order.json
+biolab orders update <ID> '{"status":"received"}'
+biolab orders resend <ID>
+biolab orders send <ID>
+biolab orders approve <ID>
+biolab orders reject <ID>
+biolab orders download <ID> [output.xlsx]
+biolab orders download-primer-template
+biolab orders download-sequencing-template
+biolab orders upload-primer-excel file.xlsx
+biolab orders upload-sequencing-excel file.xlsx
+```
+
+## Inventory
+
+```bash
+biolab inventory list
+biolab inventory list --primer-name 'FWD'
+biolab inventory list --low-stock
+biolab inventory get <ID>
+biolab inventory transactions <ID>
+biolab inventory stats
+biolab inventory preferences
+biolab inventory set-preferences '{"low_stock_threshold":5}'
+biolab inventory checkin <ID> --quantity 5 --purpose "restock"
+biolab inventory checkout <ID> --quantity 2 --purpose "PCR" --experiment-ref "EXP-001"
+biolab inventory locations
+biolab inventory create-location "Freezer A" [--parent-id <ID>]
+```
+
+## Templates
+
+```bash
+biolab templates list
+biolab templates get <ID>
+biolab templates get-default primer_synthesis
+biolab templates create <json-file>
+biolab templates update <ID> <json-file>
+biolab templates delete <ID>
+biolab templates set-default <ID>
+```
+
+## Lab
+
+```bash
+biolab lab info
+biolab lab create <name>
+biolab lab update <json>
+biolab lab orders
+biolab lab orders-stats
+biolab lab inventory
+biolab lab members
+biolab lab update-role <user_id> <role>
+biolab lab remove-member <user_id>
+biolab lab invite <email> [member]
+biolab lab invitations
+biolab lab accept-invite <id>
+biolab lab decline-invite <id>
+biolab lab join <lab_id> [role]
+biolab lab applications
+biolab lab approve-app <id>
+biolab lab reject-app <id>
+biolab lab approval-rules
+biolab lab add-rule <json>
+biolab lab remove-rule <id>
+```
+
+## Projects
+
+Project administration by project id:
+
+```bash
+biolab projects list --skip 0 --limit 100
+biolab projects get <ID>
+biolab projects create '{"name":"Grant 2026","budget":"10000"}'
+biolab projects update <ID> '{"status":"active"}'
+biolab projects members <ID>
+biolab projects add-member <PROJECT_ID> <USER_ID> [role]
+biolab projects remove-member <PROJECT_ID> <USER_ID>
+```
+
+Project-scoped workflows by slug:
+
+```bash
+biolab project tashan info
+
+biolab project tashan germplasm list --skip 0 --limit 10
+biolab project tashan germplasm list --search "line A"
+biolab project tashan germplasm list --filters '[{"field":"name","operator":"contains","value":"A"}]'
+biolab project tashan germplasm get <GERMPLASM_ID>
+biolab project tashan germplasm create '{"name":"Line A"}'
+biolab project tashan germplasm update <GERMPLASM_ID> '{"notes":"updated"}'
+biolab project tashan germplasm delete <GERMPLASM_ID>
+biolab project tashan germplasm sequencing-files <GERMPLASM_ID>
+biolab project tashan germplasm stocks <GERMPLASM_ID>
+
+biolab project tashan planting list --skip 0 --limit 100
+biolab project tashan planting get <ORDER_ID>
+biolab project tashan planting create '{"name":"Spring planting"}'
+biolab project tashan planting update <ORDER_ID> '{"status":"active"}'
+biolab project tashan planting items <ORDER_ID>
+biolab project tashan planting harvests <ORDER_ID>
+biolab project tashan planting create-harvest <ORDER_ID> '{"harvests":[]}'
+```
+
+## Users
+
+```bash
+biolab me
+biolab me update '{"phone_number":"13800000000"}'
+biolab me change-password --current 'old' --new 'new'
+```
+
+## 中文速查
+
+完整命令和英文命令一致；常用示例：
+
+```bash
+biolab orders list -f json
+biolab inventory list --low-stock -f json
+biolab lab members -f json
+biolab projects list -f json
+biolab project tashan germplasm list -f json
+biolab project tashan planting list -f json
+```

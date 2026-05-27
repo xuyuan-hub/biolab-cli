@@ -65,4 +65,5 @@ Do not invent CLI commands for backend endpoints that `biolab <domain> --help` d
   - Templates: `../biolab-templates/SKILL.md`
   - Inventory: `../biolab-inventory/SKILL.md`
   - Lab: `../biolab-lab/SKILL.md`
+  - Project slug workflows: `../biolab-project/SKILL.md`
   - Users: `../biolab-users/SKILL.md`
