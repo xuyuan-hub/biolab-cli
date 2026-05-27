@@ -199,3 +199,194 @@ async fn run_planting(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: TestCommand,
+    }
+
+    #[derive(Subcommand)]
+    enum TestCommand {
+        Project(ProjectArgs),
+    }
+
+    fn parse_project(args: &[&str]) -> ProjectArgs {
+        let cli = TestCli::try_parse_from(std::iter::once("biolab").chain(args.iter().copied()))
+            .expect("project command should parse");
+        match cli.command {
+            TestCommand::Project(args) => args,
+        }
+    }
+
+    #[test]
+    fn parses_project_info_command() {
+        let args = parse_project(&["project", "tashan", "info"]);
+
+        assert_eq!(args.slug, "tashan");
+        assert!(matches!(args.command, ProjectCommand::Info));
+    }
+
+    #[test]
+    fn parses_germplasm_list_options() {
+        let args = parse_project(&[
+            "project",
+            "tashan",
+            "germplasm",
+            "list",
+            "--skip",
+            "20",
+            "--limit",
+            "50",
+            "--search",
+            "rice A",
+            "--filters",
+            r#"[{"field":"name","operator":"contains","value":"A"}]"#,
+        ]);
+
+        match args.command {
+            ProjectCommand::Germplasm {
+                command:
+                    GermplasmCommand::List {
+                        skip,
+                        limit,
+                        search,
+                        filters,
+                    },
+            } => {
+                assert_eq!(skip, 20);
+                assert_eq!(limit, 50);
+                assert_eq!(search.as_deref(), Some("rice A"));
+                assert_eq!(
+                    filters.as_deref(),
+                    Some(r#"[{"field":"name","operator":"contains","value":"A"}]"#)
+                );
+            }
+            _ => panic!("expected germplasm list command"),
+        }
+    }
+
+    #[test]
+    fn parses_germplasm_list_defaults() {
+        let args = parse_project(&["project", "tashan", "germplasm", "list"]);
+
+        match args.command {
+            ProjectCommand::Germplasm {
+                command:
+                    GermplasmCommand::List {
+                        skip,
+                        limit,
+                        search,
+                        filters,
+                    },
+            } => {
+                assert_eq!(skip, 0);
+                assert_eq!(limit, 10);
+                assert_eq!(search, None);
+                assert_eq!(filters, None);
+            }
+            _ => panic!("expected germplasm list command"),
+        }
+    }
+
+    #[test]
+    fn parses_germplasm_mutation_commands() {
+        let create = parse_project(&[
+            "project",
+            "tashan",
+            "germplasm",
+            "create",
+            r#"{"name":"A"}"#,
+        ]);
+        match create.command {
+            ProjectCommand::Germplasm {
+                command: GermplasmCommand::Create { data },
+            } => assert_eq!(data, r#"{"name":"A"}"#),
+            _ => panic!("expected germplasm create command"),
+        }
+
+        let update = parse_project(&[
+            "project",
+            "tashan",
+            "germplasm",
+            "update",
+            "gp-1",
+            r#"{"name":"B"}"#,
+        ]);
+        match update.command {
+            ProjectCommand::Germplasm {
+                command: GermplasmCommand::Update { id, data },
+            } => {
+                assert_eq!(id, "gp-1");
+                assert_eq!(data, r#"{"name":"B"}"#);
+            }
+            _ => panic!("expected germplasm update command"),
+        }
+    }
+
+    #[test]
+    fn parses_planting_list_defaults_and_overrides() {
+        let defaults = parse_project(&["project", "tashan", "planting", "list"]);
+        match defaults.command {
+            ProjectCommand::Planting {
+                command: PlantingCommand::List { skip, limit },
+            } => {
+                assert_eq!(skip, 0);
+                assert_eq!(limit, 100);
+            }
+            _ => panic!("expected planting list command"),
+        }
+
+        let overrides = parse_project(&[
+            "project", "tashan", "planting", "list", "--skip", "10", "--limit", "25",
+        ]);
+        match overrides.command {
+            ProjectCommand::Planting {
+                command: PlantingCommand::List { skip, limit },
+            } => {
+                assert_eq!(skip, 10);
+                assert_eq!(limit, 25);
+            }
+            _ => panic!("expected planting list command"),
+        }
+    }
+
+    #[test]
+    fn parses_planting_subresource_commands() {
+        let items = parse_project(&["project", "tashan", "planting", "items", "ord-1"]);
+        match items.command {
+            ProjectCommand::Planting {
+                command: PlantingCommand::Items { id },
+            } => assert_eq!(id, "ord-1"),
+            _ => panic!("expected planting items command"),
+        }
+
+        let create_harvest = parse_project(&[
+            "project",
+            "tashan",
+            "planting",
+            "create-harvest",
+            "ord-1",
+            r#"{"items":[]}"#,
+        ]);
+        match create_harvest.command {
+            ProjectCommand::Planting {
+                command: PlantingCommand::CreateHarvest { id, data },
+            } => {
+                assert_eq!(id, "ord-1");
+                assert_eq!(data, r#"{"items":[]}"#);
+            }
+            _ => panic!("expected planting create-harvest command"),
+        }
+    }
+
+    #[test]
+    fn rejects_unknown_project_subcommand() {
+        assert!(TestCli::try_parse_from(["biolab", "project", "tashan", "unknown"]).is_err());
+    }
+}
