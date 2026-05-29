@@ -112,6 +112,22 @@ Detailed API schemas are bundled in `skills/biolab-api/references/` and installe
 - `lab.md` — Lab CRUD, member management, approval rules
 - `users.md` — User info, permission model, signup
 
+## Development Workflow
+
+All feature work follows a doc-driven process using plan files under `docs/` with `YYYY-MM-DD-Name.md` naming (name in Chinese):
+
+1. **Write a plan first** — Before coding, create a plan in `docs/` that confirms requirements, lists affected files, and includes a TODO list with `[ ]` checkboxes for each task.
+2. **Implement and check off** — As tasks are completed, update `[ ]` to `[x]` with the commit reference.
+3. **Update on interruption** — If work is interrupted or a plan is abandoned, update the TODO list to explain **why** it stopped and **why** the plan was abandoned (if applicable).
+4. **Keep the index current** — Every plan file ends with a TODO list section. This is the single source of truth for implementation status.
+
+Existing plans:
+- `docs/2026-05-21-项目更新方案.md` — Architecture refactor (modules, services, Agent skills)
+- `docs/2026-05-21-安装指南.md` — User installation guide
+- `docs/2026-05-25-CLI命令方案.md` — OpenAPI endpoint coverage plan (18 endpoints)
+- `docs/2026-05-27-项目种子API方案.md` — Project slug-scoped API plan (15 endpoints)
+- `docs/2026-05-27-命令参考.md` — Full command reference
+
 ## CI
 
 `.github/workflows/release.yml` builds for 4 platforms on push:
