@@ -76,7 +76,7 @@ impl BiolabClient {
         &self,
         slug: &str,
         germplasm_id: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_germplasm_subresource_path(
@@ -85,14 +85,14 @@ impl BiolabClient {
                 "sequencing-files",
             ))
             .await?;
-        Ok(envelope_data(resp))
+        extract_paginated(resp)
     }
 
     pub async fn list_project_germplasm_stocks(
         &self,
         slug: &str,
         germplasm_id: &str,
-    ) -> Result<Vec<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_germplasm_subresource_path(
@@ -101,7 +101,7 @@ impl BiolabClient {
                 "stocks",
             ))
             .await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn list_project_planting_orders(
@@ -155,26 +155,26 @@ impl BiolabClient {
         &self,
         slug: &str,
         order_id: &str,
-    ) -> Result<Vec<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_planting_subresource_path(slug, order_id, "items"))
             .await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn list_project_planting_harvests(
         &self,
         slug: &str,
         order_id: &str,
-    ) -> Result<Vec<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_planting_subresource_path(
                 slug, order_id, "harvests",
             ))
             .await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn create_project_planting_harvest(

@@ -1,4 +1,4 @@
-use crate::api_response::{envelope_data, extract_array};
+use crate::api_response::{envelope_data, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
 
@@ -7,9 +7,9 @@ impl BiolabClient {
         &self,
         skip: u32,
         limit: u32,
-    ) -> Result<Vec<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
         let resp: serde_json::Value = self.http.get(&list_projects_path(skip, limit)).await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn get_project(&self, project_id: &str) -> Result<serde_json::Value, BiolabError> {
@@ -37,9 +37,9 @@ impl BiolabClient {
     pub async fn list_project_members(
         &self,
         project_id: &str,
-    ) -> Result<Vec<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
         let resp: serde_json::Value = self.http.get(&project_members_path(project_id)).await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn add_project_member(

@@ -40,27 +40,41 @@ fn write_large_output<T: Serialize>(value: &T, item_count: usize) -> bool {
     let path = temp_output_path("output", "json");
     let json = serde_json::to_string_pretty(value).unwrap_or_default();
     if fs::write(&path, json).is_ok() {
-        println!("结果共 {} 条，已写入文件: {}", item_count, path.display());
+        println!("当前页 {} 条，已写入文件: {}", item_count, path.display());
         return true;
     }
     false
 }
 
+fn pagination_metadata_json<T>(list: &PaginatedList<T>) -> String {
+    let mut lines = vec![format!("  \"count\": {}", list.count)];
+    if let Some(total_pages) = list.total_pages {
+        lines.push(format!("  \"total_pages\": {total_pages}"));
+    }
+    if let Some(current_page) = list.current_page {
+        lines.push(format!("  \"current_page\": {current_page}"));
+    }
+    if let Some(has_next) = list.has_next {
+        lines.push(format!("  \"has_next\": {has_next}"));
+    }
+    if let Some(has_previous) = list.has_previous {
+        lines.push(format!("  \"has_previous\": {has_previous}"));
+    }
+    format!("{{\n{}\n}}", lines.join(",\n"))
+}
+
+pub fn print_pagination_metadata<T>(list: &PaginatedList<T>) {
+    println!("{}", pagination_metadata_json(list));
+}
+
 /// Print a paginated list. If the number of items on this page exceeds
 /// `MAX_TERMINAL_ITEMS`, write the JSON to a file and print the path instead.
 pub fn print_paginated_items<T: Serialize>(list: &PaginatedList<T>) {
+    print_pagination_metadata(list);
     if write_large_output(&list.items, list.items.len()) {
-        if list.total_pages.is_some() {
-            println!("共 {count} 条，第 {page}/{total_pages} 页", count = list.count, page = list.current_page.unwrap_or(1), total_pages = list.total_pages.unwrap_or(1));
-        }
         return;
     }
     let json = serde_json::to_string_pretty(&list.items).unwrap_or_default();
-    if list.total_pages.is_some() {
-        println!("共 {count} 条，第 {page}/{total_pages} 页", count = list.count, page = list.current_page.unwrap_or(1), total_pages = list.total_pages.unwrap_or(1));
-    } else {
-        println!("共 {} 条", list.count);
-    }
     println!("{json}");
 }
 
@@ -221,8 +235,14 @@ mod tests {
         });
 
         let output = serde_json::to_string_pretty(&record).unwrap();
-        assert!(output.contains("京科968父本"), "Chinese characters must survive JSON serialization: {output}");
-        assert!(output.contains("京92"), "alias_name should contain Chinese: {output}");
+        assert!(
+            output.contains("京科968父本"),
+            "Chinese characters must survive JSON serialization: {output}"
+        );
+        assert!(
+            output.contains("京92"),
+            "alias_name should contain Chinese: {output}"
+        );
     }
 
     /// Verify that a list of Chinese germplasm records serializes correctly.
@@ -238,5 +258,24 @@ mod tests {
         assert!(output.contains("京科968DH"));
         assert!(output.contains("京科968母本"));
         assert!(output.contains("迪卡父1"));
+    }
+
+    #[test]
+    fn pagination_metadata_includes_backend_page_fields() {
+        let list = crate::api_response::PaginatedList {
+            items: vec![json!({ "id": "SH000157" })],
+            count: 14440,
+            total_pages: Some(145),
+            current_page: Some(1),
+            has_next: Some(true),
+            has_previous: Some(false),
+        };
+
+        let output = super::pagination_metadata_json(&list);
+
+        assert_eq!(
+            output,
+            "{\n  \"count\": 14440,\n  \"total_pages\": 145,\n  \"current_page\": 1,\n  \"has_next\": true,\n  \"has_previous\": false\n}"
+        );
     }
 }

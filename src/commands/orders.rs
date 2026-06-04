@@ -4,7 +4,9 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{print_order, print_order_brief, print_result, OutputFormat};
+use crate::output::{
+    print_order, print_order_brief, print_pagination_metadata, print_result, OutputFormat,
+};
 
 #[derive(Args)]
 pub struct OrdersArgs {
@@ -77,30 +79,32 @@ pub async fn run(
         }
         OrdersCommand::List { skip, limit } => {
             let orders = client.list_orders(*skip, *limit).await?;
-            if orders.is_empty() {
-                println!("No orders");
-                return Ok(());
-            }
             match format {
                 OutputFormat::Json => print_result(&orders, format),
                 OutputFormat::Text => {
-                    for o in &orders {
-                        print_order_brief(o);
+                    print_pagination_metadata(&orders);
+                    if orders.items.is_empty() {
+                        println!("No orders");
+                    } else {
+                        for o in &orders.items {
+                            print_order_brief(o);
+                        }
                     }
                 }
             }
         }
         OrdersCommand::PendingApprovals => {
             let orders = client.list_pending_approvals().await?;
-            if orders.is_empty() {
-                println!("No pending approvals");
-                return Ok(());
-            }
             match format {
                 OutputFormat::Json => print_result(&orders, format),
                 OutputFormat::Text => {
-                    for o in &orders {
-                        print_order_brief(o);
+                    print_pagination_metadata(&orders);
+                    if orders.items.is_empty() {
+                        println!("No pending approvals");
+                    } else {
+                        for o in &orders.items {
+                            print_order_brief(o);
+                        }
                     }
                 }
             }

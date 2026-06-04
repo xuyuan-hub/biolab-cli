@@ -145,11 +145,17 @@ async fn run_germplasm(
             let files = client
                 .list_project_germplasm_sequencing_files(slug, id)
                 .await?;
-            print_result(&files, format);
+            match format {
+                OutputFormat::Json => print_result(&files, format),
+                OutputFormat::Text => print_paginated_items(&files),
+            }
         }
         GermplasmCommand::Stocks { id } => {
             let stocks = client.list_project_germplasm_stocks(slug, id).await?;
-            print_result(&stocks, format);
+            match format {
+                OutputFormat::Json => print_result(&stocks, format),
+                OutputFormat::Text => print_paginated_items(&stocks),
+            }
         }
     }
     Ok(())
@@ -189,11 +195,17 @@ async fn run_planting(
         }
         PlantingCommand::Items { id } => {
             let items = client.list_project_planting_items(slug, id).await?;
-            print_result(&items, format);
+            match format {
+                OutputFormat::Json => print_result(&items, format),
+                OutputFormat::Text => print_paginated_items(&items),
+            }
         }
         PlantingCommand::Harvests { id } => {
             let harvests = client.list_project_planting_harvests(slug, id).await?;
-            print_result(&harvests, format);
+            match format {
+                OutputFormat::Json => print_result(&harvests, format),
+                OutputFormat::Text => print_paginated_items(&harvests),
+            }
         }
         PlantingCommand::CreateHarvest { id, data } => {
             let data: serde_json::Value = serde_json::from_str(data)?;

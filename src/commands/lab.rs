@@ -5,7 +5,8 @@ use clap::{Args, Subcommand};
 use crate::client::BiolabClient;
 use crate::config::Config;
 use crate::output::{
-    print_lab_members, print_order_brief, print_result, print_stocks, OutputFormat,
+    print_lab_members, print_order_brief, print_paginated_items, print_pagination_metadata,
+    print_result, print_stocks, OutputFormat,
 };
 
 #[derive(Args)]
@@ -92,10 +93,11 @@ pub async fn run(
             match format {
                 OutputFormat::Json => print_result(&orders, format),
                 OutputFormat::Text => {
-                    if orders.is_empty() {
+                    print_pagination_metadata(&orders);
+                    if orders.items.is_empty() {
                         println!("No lab orders");
                     } else {
-                        for order in &orders {
+                        for order in &orders.items {
                             print_order_brief(order);
                         }
                     }
@@ -110,14 +112,20 @@ pub async fn run(
             let stocks = client.list_lab_inventory().await?;
             match format {
                 OutputFormat::Json => print_result(&stocks, format),
-                OutputFormat::Text => print_stocks(&stocks),
+                OutputFormat::Text => {
+                    print_pagination_metadata(&stocks);
+                    print_stocks(&stocks.items);
+                }
             }
         }
         LabCommand::Members => {
             let members = client.list_lab_members().await?;
             match format {
                 OutputFormat::Json => print_result(&members, format),
-                OutputFormat::Text => print_lab_members(&members),
+                OutputFormat::Text => {
+                    print_pagination_metadata(&members);
+                    print_lab_members(&members.items);
+                }
             }
         }
         LabCommand::UpdateRole { user_id, role } => {
@@ -134,7 +142,10 @@ pub async fn run(
         }
         LabCommand::Invitations => {
             let invitations = client.list_invitations().await?;
-            print_result(&invitations, format);
+            match format {
+                OutputFormat::Json => print_result(&invitations, format),
+                OutputFormat::Text => print_paginated_items(&invitations),
+            }
         }
         LabCommand::AcceptInvite { invitation_id } => {
             let result = client.accept_invitation(invitation_id).await?;
@@ -150,7 +161,10 @@ pub async fn run(
         }
         LabCommand::Applications => {
             let applications = client.list_applications().await?;
-            print_result(&applications, format);
+            match format {
+                OutputFormat::Json => print_result(&applications, format),
+                OutputFormat::Text => print_paginated_items(&applications),
+            }
         }
         LabCommand::ApproveApp { application_id } => {
             let result = client.approve_application(application_id).await?;
@@ -162,7 +176,10 @@ pub async fn run(
         }
         LabCommand::ApprovalRules => {
             let rules = client.list_approval_rules().await?;
-            print_result(&rules, format);
+            match format {
+                OutputFormat::Json => print_result(&rules, format),
+                OutputFormat::Text => print_paginated_items(&rules),
+            }
         }
         LabCommand::AddRule { data } => {
             let data: serde_json::Value = serde_json::from_str(data)?;

@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{print_result, OutputFormat};
+use crate::output::{print_paginated_items, print_result, OutputFormat};
 
 #[derive(Args)]
 pub struct ProjectsArgs {
@@ -50,7 +50,10 @@ pub async fn run(
     match &args.command {
         ProjectsCommand::List { skip, limit } => {
             let projects = client.list_projects(*skip, *limit).await?;
-            print_result(&projects, format);
+            match format {
+                OutputFormat::Json => print_result(&projects, format),
+                OutputFormat::Text => print_paginated_items(&projects),
+            }
         }
         ProjectsCommand::Get { id } => {
             let project = client.get_project(id).await?;
@@ -68,7 +71,10 @@ pub async fn run(
         }
         ProjectsCommand::Members { id } => {
             let members = client.list_project_members(id).await?;
-            print_result(&members, format);
+            match format {
+                OutputFormat::Json => print_result(&members, format),
+                OutputFormat::Text => print_paginated_items(&members),
+            }
         }
         ProjectsCommand::AddMember {
             project_id,

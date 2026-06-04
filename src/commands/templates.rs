@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{print_result, print_templates, OutputFormat};
+use crate::output::{print_pagination_metadata, print_result, print_templates, OutputFormat};
 
 #[derive(Args)]
 pub struct TemplatesArgs {
@@ -42,7 +42,10 @@ pub async fn run(
             let templates = client.list_templates().await?;
             match format {
                 OutputFormat::Json => print_result(&templates, format),
-                OutputFormat::Text => print_templates(&templates),
+                OutputFormat::Text => {
+                    print_pagination_metadata(&templates);
+                    print_templates(&templates.items);
+                }
             }
         }
         TemplatesCommand::Get { id } => {

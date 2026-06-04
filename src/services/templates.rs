@@ -1,13 +1,13 @@
-use crate::api_response::{envelope_data, extract_array, extract_object};
+use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
 use crate::services::url_encode;
 use crate::types::Template;
 
 impl BiolabClient {
-    pub async fn list_templates(&self) -> Result<Vec<Template>, BiolabError> {
+    pub async fn list_templates(&self) -> Result<PaginatedList<Template>, BiolabError> {
         let resp: serde_json::Value = self.http.get("/order-info-templates/").await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn get_template(&self, id: &str) -> Result<Template, BiolabError> {

@@ -1,4 +1,4 @@
-use crate::api_response::{envelope_data, extract_array, extract_object};
+use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
 use crate::services::{empty_body, single_field_body};
@@ -23,9 +23,9 @@ impl BiolabClient {
         extract_object(resp)
     }
 
-    pub async fn list_lab_orders(&self) -> Result<Vec<Order>, BiolabError> {
+    pub async fn list_lab_orders(&self) -> Result<PaginatedList<Order>, BiolabError> {
         let resp: serde_json::Value = self.http.get(lab_orders_path()).await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn get_lab_order_stats(&self) -> Result<serde_json::Value, BiolabError> {
@@ -33,14 +33,14 @@ impl BiolabClient {
         Ok(envelope_data(resp))
     }
 
-    pub async fn list_lab_inventory(&self) -> Result<Vec<Stock>, BiolabError> {
+    pub async fn list_lab_inventory(&self) -> Result<PaginatedList<Stock>, BiolabError> {
         let resp: serde_json::Value = self.http.get(lab_inventory_path()).await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
-    pub async fn list_lab_members(&self) -> Result<Vec<LabMember>, BiolabError> {
+    pub async fn list_lab_members(&self) -> Result<PaginatedList<LabMember>, BiolabError> {
         let resp: serde_json::Value = self.http.get("/lab/members").await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn update_member_role(
@@ -72,9 +72,9 @@ impl BiolabClient {
         Ok(envelope_data(resp))
     }
 
-    pub async fn list_invitations(&self) -> Result<Vec<Invitation>, BiolabError> {
+    pub async fn list_invitations(&self) -> Result<PaginatedList<Invitation>, BiolabError> {
         let resp: serde_json::Value = self.http.get("/lab/invitations").await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn accept_invitation(
@@ -117,9 +117,9 @@ impl BiolabClient {
         Ok(envelope_data(resp))
     }
 
-    pub async fn list_applications(&self) -> Result<Vec<Application>, BiolabError> {
+    pub async fn list_applications(&self) -> Result<PaginatedList<Application>, BiolabError> {
         let resp: serde_json::Value = self.http.get("/lab/applications").await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn approve_application(
@@ -141,9 +141,9 @@ impl BiolabClient {
         Ok(envelope_data(resp))
     }
 
-    pub async fn list_approval_rules(&self) -> Result<Vec<ApprovalRule>, BiolabError> {
+    pub async fn list_approval_rules(&self) -> Result<PaginatedList<ApprovalRule>, BiolabError> {
         let resp: serde_json::Value = self.http.get("/lab/approval-rules").await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn add_approval_rule(

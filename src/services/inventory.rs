@@ -1,4 +1,4 @@
-use crate::api_response::{envelope_data, extract_array, extract_object};
+use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
 use crate::services::url_encode;
@@ -10,12 +10,12 @@ impl BiolabClient {
         primer_name: Option<&str>,
         location_id: Option<&str>,
         low_stock: bool,
-    ) -> Result<Vec<Stock>, BiolabError> {
+    ) -> Result<PaginatedList<Stock>, BiolabError> {
         let resp: serde_json::Value = self
             .http
             .get(&list_stocks_path(primer_name, location_id, low_stock))
             .await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn get_stock(&self, stock_id: &str) -> Result<Stock, BiolabError> {
@@ -26,9 +26,9 @@ impl BiolabClient {
     pub async fn list_stock_transactions(
         &self,
         stock_id: &str,
-    ) -> Result<Vec<Transaction>, BiolabError> {
+    ) -> Result<PaginatedList<Transaction>, BiolabError> {
         let resp: serde_json::Value = self.http.get(&stock_transactions_path(stock_id)).await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn get_stock_stats(&self) -> Result<StockStats, BiolabError> {
@@ -82,9 +82,9 @@ impl BiolabClient {
         extract_object(resp)
     }
 
-    pub async fn list_locations(&self) -> Result<Vec<Location>, BiolabError> {
+    pub async fn list_locations(&self) -> Result<PaginatedList<Location>, BiolabError> {
         let resp: serde_json::Value = self.http.get("/inventory/locations").await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn create_location(

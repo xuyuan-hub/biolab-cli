@@ -1,12 +1,16 @@
-use crate::api_response::{envelope_data, extract_array, extract_object};
+use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
 use crate::types::Order;
 
 impl BiolabClient {
-    pub async fn list_orders(&self, skip: u32, limit: u32) -> Result<Vec<Order>, BiolabError> {
+    pub async fn list_orders(
+        &self,
+        skip: u32,
+        limit: u32,
+    ) -> Result<PaginatedList<Order>, BiolabError> {
         let resp: serde_json::Value = self.http.get(&list_orders_path(skip, limit)).await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn get_order(&self, order_id: &str) -> Result<Order, BiolabError> {
@@ -19,9 +23,9 @@ impl BiolabClient {
         Ok(envelope_data(resp))
     }
 
-    pub async fn list_pending_approvals(&self) -> Result<Vec<Order>, BiolabError> {
+    pub async fn list_pending_approvals(&self) -> Result<PaginatedList<Order>, BiolabError> {
         let resp: serde_json::Value = self.http.get("/orders/approvals/pending").await?;
-        extract_array(resp)
+        extract_paginated(resp)
     }
 
     pub async fn create_primer_order(

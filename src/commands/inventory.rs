@@ -4,7 +4,9 @@ use clap::{Args, Subcommand};
 
 use crate::client::BiolabClient;
 use crate::config::Config;
-use crate::output::{print_result, print_stocks, OutputFormat};
+use crate::output::{
+    print_paginated_items, print_pagination_metadata, print_result, print_stocks, OutputFormat,
+};
 
 #[derive(Args)]
 pub struct InventoryArgs {
@@ -79,7 +81,10 @@ pub async fn run(
                 .await?;
             match format {
                 OutputFormat::Json => print_result(&stocks, format),
-                OutputFormat::Text => print_stocks(&stocks),
+                OutputFormat::Text => {
+                    print_pagination_metadata(&stocks);
+                    print_stocks(&stocks.items);
+                }
             }
         }
         InventoryCommand::Get { id } => {
@@ -88,7 +93,10 @@ pub async fn run(
         }
         InventoryCommand::Transactions { id } => {
             let transactions = client.list_stock_transactions(id).await?;
-            print_result(&transactions, format);
+            match format {
+                OutputFormat::Json => print_result(&transactions, format),
+                OutputFormat::Text => print_paginated_items(&transactions),
+            }
         }
         InventoryCommand::Stats => {
             let stats = client.get_stock_stats().await?;
@@ -124,7 +132,10 @@ pub async fn run(
         }
         InventoryCommand::Locations => {
             let locations = client.list_locations().await?;
-            print_result(&locations, format);
+            match format {
+                OutputFormat::Json => print_result(&locations, format),
+                OutputFormat::Text => print_paginated_items(&locations),
+            }
         }
         InventoryCommand::CreateLocation { name, parent_id } => {
             let location = client.create_location(name, parent_id.as_deref()).await?;

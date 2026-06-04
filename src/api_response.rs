@@ -86,11 +86,17 @@ impl<T: serde::de::DeserializeOwned> PaginatedList<T> {
                 // Prefer top-level pagination, fall back to nested pagination
                 return Ok(PaginatedList {
                     items,
-                    count: count.or_else(|| data_obj.get("count").and_then(|v| v.as_u64())).unwrap_or(len),
-                    total_pages: total_pages.or_else(|| data_obj.get("total_pages").and_then(|v| v.as_u64())),
-                    current_page: current_page.or_else(|| data_obj.get("current_page").and_then(|v| v.as_u64())),
-                    has_next: has_next.or_else(|| data_obj.get("has_next").and_then(|v| v.as_bool())),
-                    has_previous: has_previous.or_else(|| data_obj.get("has_previous").and_then(|v| v.as_bool())),
+                    count: count
+                        .or_else(|| data_obj.get("count").and_then(|v| v.as_u64()))
+                        .unwrap_or(len),
+                    total_pages: total_pages
+                        .or_else(|| data_obj.get("total_pages").and_then(|v| v.as_u64())),
+                    current_page: current_page
+                        .or_else(|| data_obj.get("current_page").and_then(|v| v.as_u64())),
+                    has_next: has_next
+                        .or_else(|| data_obj.get("has_next").and_then(|v| v.as_bool())),
+                    has_previous: has_previous
+                        .or_else(|| data_obj.get("has_previous").and_then(|v| v.as_bool())),
                 });
             }
         }
@@ -232,7 +238,8 @@ mod tests {
                 "has_previous": false
             }
         });
-        let list: PaginatedList<Item> = extract_paginated(resp).expect("paginated list should parse");
+        let list: PaginatedList<Item> =
+            extract_paginated(resp).expect("paginated list should parse");
         assert_eq!(list.items.len(), 2);
         assert_eq!(list.items[0].id, "a");
         assert_eq!(list.count, 111);
@@ -254,7 +261,8 @@ mod tests {
             "has_previous": false,
             "total_pages": 2
         });
-        let list: PaginatedList<Item> = extract_paginated(resp).expect("flat data array should parse");
+        let list: PaginatedList<Item> =
+            extract_paginated(resp).expect("flat data array should parse");
         assert_eq!(list.items.len(), 2);
         assert_eq!(list.items[0].id, "a");
         assert_eq!(list.count, 111);
@@ -274,7 +282,8 @@ mod tests {
             "has_next": false,
             "has_previous": false
         });
-        let list: PaginatedList<Item> = extract_paginated(resp).expect("should parse without wrapper");
+        let list: PaginatedList<Item> =
+            extract_paginated(resp).expect("should parse without wrapper");
         assert_eq!(list.items.len(), 1);
         assert_eq!(list.count, 1);
     }
