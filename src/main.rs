@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use biolab::commands::{
-    inventory, lab, orders, project, projects, skills, templates, update, users,
+    inventory, lab, orders, project, projects, skills, tasks, templates, update, users,
 };
 use biolab::config::Config;
 use biolab::output::OutputFormat;
@@ -68,6 +68,9 @@ enum Commands {
 
     /// Project management.
     Projects(projects::ProjectsArgs),
+
+    /// Task management.
+    Tasks(tasks::TasksArgs),
 
     /// AI agent skill installation and checks.
     Skills(skills::SkillsArgs),
@@ -140,6 +143,7 @@ async fn main() {
         Some(Commands::Lab(args)) => lab::run(&args, &config, &format).await,
         Some(Commands::Project(args)) => project::run(&args, &config, &format).await,
         Some(Commands::Projects(args)) => projects::run(&args, &config, &format).await,
+        Some(Commands::Tasks(args)) => tasks::run(&args, &config, &format).await,
         Some(Commands::Skills(args)) => skills::run(&args, &format),
         Some(Commands::Update(args)) => update::run(&args, &format).await,
     };

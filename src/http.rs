@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use reqwest::header::{HeaderName, HeaderValue};
 use reqwest::Client;
 use serde::de::DeserializeOwned;
 
@@ -41,6 +42,23 @@ impl BiolabHttp {
             .send()
             .await
             .map_err(BiolabError::RequestError)?;
+        parse_response(resp, path).await
+    }
+
+    pub(crate) async fn get_with_headers<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        headers: &[(&str, &str)],
+    ) -> Result<T, BiolabError> {
+        let mut request = self.client.get(self.url(path));
+        for (name, value) in headers {
+            request = request.header(
+                HeaderName::from_bytes(name.as_bytes())
+                    .map_err(|e| BiolabError::ParseError(e.to_string()))?,
+                HeaderValue::from_str(value).map_err(|e| BiolabError::ParseError(e.to_string()))?,
+            );
+        }
+        let resp = request.send().await.map_err(BiolabError::RequestError)?;
         parse_response(resp, path).await
     }
 
@@ -106,6 +124,35 @@ impl BiolabHttp {
             .send()
             .await
             .map_err(BiolabError::RequestError)?;
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let detail = resp.text().await.unwrap_or_default();
+            return Err(BiolabError::HttpError {
+                status,
+                path: path.into(),
+                detail,
+            });
+        }
+        resp.bytes()
+            .await
+            .map(|b| b.to_vec())
+            .map_err(BiolabError::RequestError)
+    }
+
+    pub(crate) async fn download_bytes_with_headers(
+        &self,
+        path: &str,
+        headers: &[(&str, &str)],
+    ) -> Result<Vec<u8>, BiolabError> {
+        let mut request = self.client.get(self.url(path));
+        for (name, value) in headers {
+            request = request.header(
+                HeaderName::from_bytes(name.as_bytes())
+                    .map_err(|e| BiolabError::ParseError(e.to_string()))?,
+                HeaderValue::from_str(value).map_err(|e| BiolabError::ParseError(e.to_string()))?,
+            );
+        }
+        let resp = request.send().await.map_err(BiolabError::RequestError)?;
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
             let detail = resp.text().await.unwrap_or_default();

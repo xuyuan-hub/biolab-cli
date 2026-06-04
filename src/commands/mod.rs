@@ -4,6 +4,7 @@ pub mod orders;
 pub mod project;
 pub mod projects;
 pub mod skills;
+pub mod tasks;
 pub mod templates;
 pub mod update;
 pub mod users;

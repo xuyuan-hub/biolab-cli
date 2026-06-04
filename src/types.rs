@@ -299,6 +299,134 @@ pub struct ApprovalRule {
     pub sort_order: Option<u32>,
 }
 
+// ============================================================
+// Task scheduling types
+// ============================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Task {
+    pub id: String,
+    pub lab_id: String,
+    pub title: String,
+    pub status: String,
+    pub created_by_id: String,
+    pub created_at: String,
+    pub updated_at: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub input_data: Option<serde_json::Value>,
+    #[serde(default)]
+    pub output_data: Option<serde_json::Value>,
+    #[serde(default)]
+    pub source_type: Option<String>,
+    #[serde(default)]
+    pub source_id: Option<String>,
+    #[serde(default)]
+    pub task_type_id: Option<String>,
+    #[serde(default)]
+    pub parts: Vec<TaskPart>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskPart {
+    pub id: String,
+    pub task_id: String,
+    pub name: String,
+    pub status: String,
+    pub sort_order: i64,
+    pub created_at: String,
+    pub updated_at: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub input_data: Option<serde_json::Value>,
+    #[serde(default)]
+    pub output_schema: Option<serde_json::Value>,
+    #[serde(default)]
+    pub output_data: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskType {
+    pub id: String,
+    pub key: String,
+    pub display_name: String,
+    pub enabled: bool,
+    pub category: String,
+    pub created_at: String,
+    pub updated_at: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub scope: Option<String>,
+    #[serde(default)]
+    pub input_schema: Option<serde_json::Value>,
+    #[serde(default)]
+    pub output_schema: Option<serde_json::Value>,
+    #[serde(default)]
+    pub documents: Vec<TaskTypeDocument>,
+    #[serde(default)]
+    pub assigned_staff: Vec<StaffUserInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskTypeDocument {
+    pub id: String,
+    pub document_type: String,
+    pub filename: String,
+    pub content_type: String,
+    pub file_size: u64,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffUserInfo {
+    pub assignment_id: String,
+    pub user_id: String,
+    pub email: String,
+    #[serde(default)]
+    pub full_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskDocument {
+    pub id: String,
+    pub task_id: String,
+    pub document_type: String,
+    pub visibility: String,
+    pub filename: String,
+    pub content_type: String,
+    pub file_size: u64,
+    pub created_at: String,
+    #[serde(default)]
+    pub part_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskResult {
+    pub id: String,
+    pub task_id: String,
+    pub part_id: String,
+    pub submitted_by_id: String,
+    pub created_at: String,
+    #[serde(default)]
+    pub assignment_id: Option<String>,
+    #[serde(default)]
+    pub output_data: Option<serde_json::Value>,
+    #[serde(default)]
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffAssignment {
+    pub assignment_id: String,
+    pub assignment_status: String,
+    pub role: String,
+    pub task: Task,
+    pub part: TaskPart,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
