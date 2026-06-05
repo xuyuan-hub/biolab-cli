@@ -51,6 +51,8 @@ Compare the user request with each task type's:
 
 Prefer enabled task types. Ignore disabled task types unless the user explicitly asks about unavailable options.
 
+Do not inspect, infer, or report task type staff bindings. Staff assignment/binding details are not part of the user-facing task type contract; if an API response includes `assigned_staff` or similar internal fields, ignore them.
+
 ## Creating A Task
 
 Use:
@@ -127,4 +129,3 @@ After task creation, report:
 - task type
 
 Use `biolab tasks get <TASK_ID> -f json` only if the create response is missing important fields.
-

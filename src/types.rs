@@ -365,9 +365,11 @@ pub struct TaskType {
     #[serde(default)]
     pub output_schema: Option<serde_json::Value>,
     #[serde(default)]
-    pub documents: Vec<TaskTypeDocument>,
+    pub command_template: Option<Vec<String>>,
     #[serde(default)]
-    pub assigned_staff: Vec<StaffUserInfo>,
+    pub timeout_seconds: Option<u64>,
+    #[serde(default)]
+    pub documents: Vec<TaskTypeDocument>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -378,15 +380,6 @@ pub struct TaskTypeDocument {
     pub content_type: String,
     pub file_size: u64,
     pub created_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StaffUserInfo {
-    pub assignment_id: String,
-    pub user_id: String,
-    pub email: String,
-    #[serde(default)]
-    pub full_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -419,12 +412,117 @@ pub struct TaskResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StaffAssignment {
-    pub assignment_id: String,
-    pub assignment_status: String,
+pub struct StaffAssignmentBrief {
+    pub id: String,
     pub role: String,
-    pub task: Task,
-    pub part: TaskPart,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskTypeBrief {
+    pub id: String,
+    pub display_name: String,
+    pub category: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffTaskBrief {
+    pub id: String,
+    pub title: String,
+    pub status: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default, rename = "type")]
+    pub task_type: Option<TaskTypeBrief>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffTaskDetail {
+    pub id: String,
+    pub lab_id: String,
+    pub title: String,
+    pub status: String,
+    pub created_by_id: String,
+    pub created_at: String,
+    pub updated_at: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default, rename = "type")]
+    pub task_type: Option<TaskTypeBrief>,
+    #[serde(default)]
+    pub input_data: Option<serde_json::Value>,
+    #[serde(default)]
+    pub output_data: Option<serde_json::Value>,
+    #[serde(default)]
+    pub source: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffPartBrief {
+    pub id: String,
+    pub name: String,
+    pub status: String,
+    pub sort_order: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffPartDetail {
+    pub id: String,
+    pub task_id: String,
+    pub name: String,
+    pub status: String,
+    pub sort_order: i64,
+    pub created_at: String,
+    pub updated_at: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub input_data: Option<serde_json::Value>,
+    #[serde(default)]
+    pub output_schema: Option<serde_json::Value>,
+    #[serde(default)]
+    pub output_data: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffAssignmentSummary {
+    pub document_count: u64,
+    pub has_latest_result: bool,
+    #[serde(default)]
+    pub latest_result_created_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffDocumentBrief {
+    pub id: String,
+    pub filename: String,
+    pub document_type: String,
+    pub download_url: String,
+    #[serde(default)]
+    pub content_type: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffAssignmentItem {
+    pub assignment: StaffAssignmentBrief,
+    pub task: StaffTaskBrief,
+    pub part: StaffPartBrief,
+    pub summary: StaffAssignmentSummary,
+    #[serde(default)]
+    pub documents: Vec<StaffDocumentBrief>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffAssignmentDetail {
+    pub assignment: StaffAssignmentBrief,
+    pub task: StaffTaskDetail,
+    pub part: StaffPartDetail,
+    #[serde(default)]
+    pub documents: Vec<StaffDocumentBrief>,
+    #[serde(default)]
+    pub latest_result: Option<TaskResult>,
 }
 
 #[cfg(test)]
@@ -545,5 +643,29 @@ mod tests {
         let rule: ApprovalRule =
             serde_json::from_str(json).expect("should parse rule with string max_price");
         assert_eq!(rule.max_price, Some(500.0));
+    }
+
+    #[test]
+    fn task_type_ignores_internal_staff_bindings() {
+        let json = r#"{
+            "id": "tt1",
+            "key": "test",
+            "display_name": "Test",
+            "enabled": true,
+            "category": "staff",
+            "created_at": "2026-06-05T00:00:00Z",
+            "updated_at": "2026-06-05T00:00:00Z",
+            "documents": [],
+            "assigned_staff": [{
+                "assignment_id": "a1",
+                "user_id": "u1",
+                "email": "staff@example.com",
+                "full_name": "Staff"
+            }]
+        }"#;
+        let task_type: TaskType =
+            serde_json::from_str(json).expect("should ignore internal staff binding details");
+        let value = serde_json::to_value(task_type).expect("should serialize task type");
+        assert!(value.get("assigned_staff").is_none());
     }
 }

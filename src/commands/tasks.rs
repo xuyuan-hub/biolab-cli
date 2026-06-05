@@ -5,7 +5,7 @@ use clap::{Args, Subcommand, ValueEnum};
 use crate::client::BiolabClient;
 use crate::config::Config;
 use crate::output::{print_paginated_items, print_pagination_metadata, print_result, OutputFormat};
-use crate::types::{StaffAssignment, Task, TaskType};
+use crate::types::{StaffAssignmentItem, Task, TaskType};
 
 #[derive(Args)]
 pub struct TasksArgs {
@@ -17,6 +17,12 @@ pub struct TasksArgs {
 pub enum TasksCommand {
     /// List task types available to the current lab.
     Types {
+        #[arg(short, long, default_value_t = 0)]
+        skip: u32,
+        #[arg(short, long, default_value_t = 100)]
+        limit: u32,
+        #[arg(long)]
+        search: Option<String>,
         #[arg(long)]
         lab_id: Option<String>,
     },
@@ -125,8 +131,22 @@ pub async fn run(
     let client = BiolabClient::new(Arc::clone(config))?;
 
     match &args.command {
-        TasksCommand::Types { lab_id } => {
-            let types = client.list_lab_task_types(lab_id.as_deref()).await?;
+        TasksCommand::Types {
+            skip,
+            limit,
+            search,
+            lab_id,
+        } => {
+            let should_search_task_types = search.as_deref().is_some_and(|value| !value.is_empty())
+                || *skip != 0
+                || *limit != 100;
+            let types = if should_search_task_types {
+                client
+                    .search_task_types(*skip, *limit, search.as_deref())
+                    .await?
+            } else {
+                client.list_lab_task_types(lab_id.as_deref()).await?
+            };
             match format {
                 OutputFormat::Json => print_result(&types, format),
                 OutputFormat::Text => print_task_types(&types),
@@ -134,8 +154,8 @@ pub async fn run(
         }
         TasksCommand::Create { file, lab_id } => {
             let mut data = read_json_file(file)?;
-            ensure_task_lab_id(&client, &mut data, lab_id.as_deref()).await?;
-            let task = client.create_task(&data).await?;
+            prepare_lab_task_payload(&mut data)?;
+            let task = client.create_lab_task(&data, lab_id.as_deref()).await?;
             print_result(&task, format);
         }
         TasksCommand::List {
@@ -255,30 +275,11 @@ fn read_json_file(path: &str) -> anyhow::Result<serde_json::Value> {
     Ok(serde_json::from_str(&content)?)
 }
 
-async fn ensure_task_lab_id(
-    client: &BiolabClient,
-    data: &mut serde_json::Value,
-    lab_id: Option<&str>,
-) -> anyhow::Result<()> {
+fn prepare_lab_task_payload(data: &mut serde_json::Value) -> anyhow::Result<()> {
     let obj = data
         .as_object_mut()
         .ok_or_else(|| anyhow::anyhow!("Task payload must be a JSON object"))?;
-
-    if let Some(lab_id) = lab_id {
-        obj.insert(
-            "lab_id".to_string(),
-            serde_json::Value::String(lab_id.to_string()),
-        );
-        return Ok(());
-    }
-
-    let has_lab_id = obj.get("lab_id").is_some_and(|value| !value.is_null());
-    if has_lab_id {
-        return Ok(());
-    }
-
-    let lab = client.get_lab().await?;
-    obj.insert("lab_id".to_string(), serde_json::Value::String(lab.id));
+    obj.remove("lab_id");
     Ok(())
 }
 
@@ -322,7 +323,7 @@ fn print_tasks(list: &crate::api_response::PaginatedList<Task>) {
     }
 }
 
-fn print_assignments(list: &crate::api_response::PaginatedList<StaffAssignment>) {
+fn print_assignments(list: &crate::api_response::PaginatedList<StaffAssignmentItem>) {
     print_pagination_metadata(list);
     if list.items.is_empty() {
         println!("No assigned tasks");
@@ -331,9 +332,9 @@ fn print_assignments(list: &crate::api_response::PaginatedList<StaffAssignment>)
     for assignment in &list.items {
         println!(
             "{}  {:12}  {:8}  {}  part={}",
-            assignment.assignment_id,
-            assignment.assignment_status,
-            assignment.role,
+            assignment.assignment.id,
+            assignment.assignment.status,
+            assignment.assignment.role,
             assignment.task.title,
             assignment.part.name
         );
@@ -380,6 +381,34 @@ mod tests {
                 assert_eq!(lab_id.as_deref(), Some("lab-1"));
             }
             _ => panic!("expected task list command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_types_search_options() {
+        let args = parse_tasks(&[
+            "tasks",
+            "types",
+            "--search",
+            "sample qc",
+            "--skip",
+            "10",
+            "--limit",
+            "25",
+        ]);
+        match args.command {
+            TasksCommand::Types {
+                skip,
+                limit,
+                search,
+                lab_id,
+            } => {
+                assert_eq!(skip, 10);
+                assert_eq!(limit, 25);
+                assert_eq!(search.as_deref(), Some("sample qc"));
+                assert!(lab_id.is_none());
+            }
+            _ => panic!("expected task types command"),
         }
     }
 

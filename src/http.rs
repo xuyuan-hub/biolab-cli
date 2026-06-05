@@ -77,6 +77,24 @@ impl BiolabHttp {
         parse_response(resp, path).await
     }
 
+    pub(crate) async fn post_with_headers<T: DeserializeOwned, B: serde::Serialize>(
+        &self,
+        path: &str,
+        body: &B,
+        headers: &[(&str, &str)],
+    ) -> Result<T, BiolabError> {
+        let mut request = self.client.post(self.url(path)).json(body);
+        for (name, value) in headers {
+            request = request.header(
+                HeaderName::from_bytes(name.as_bytes())
+                    .map_err(|e| BiolabError::ParseError(e.to_string()))?,
+                HeaderValue::from_str(value).map_err(|e| BiolabError::ParseError(e.to_string()))?,
+            );
+        }
+        let resp = request.send().await.map_err(BiolabError::RequestError)?;
+        parse_response(resp, path).await
+    }
+
     pub(crate) async fn patch<T: DeserializeOwned, B: serde::Serialize>(
         &self,
         path: &str,

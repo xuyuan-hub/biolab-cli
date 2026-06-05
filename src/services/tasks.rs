@@ -2,9 +2,22 @@ use crate::api_response::{envelope_data, extract_object, extract_paginated, Pagi
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
 use crate::services::url_encode;
-use crate::types::{StaffAssignment, Task, TaskDocument, TaskResult, TaskType};
+use crate::types::{
+    StaffAssignmentDetail, StaffAssignmentItem, Task, TaskDocument, TaskResult, TaskType,
+};
 
 impl BiolabClient {
+    pub async fn search_task_types(
+        &self,
+        skip: u32,
+        limit: u32,
+        search: Option<&str>,
+    ) -> Result<PaginatedList<TaskType>, BiolabError> {
+        let path = task_types_path(skip, limit, search);
+        let resp: serde_json::Value = self.http.get(&path).await?;
+        extract_paginated(resp)
+    }
+
     pub async fn list_lab_task_types(
         &self,
         lab_id: Option<&str>,
@@ -105,6 +118,22 @@ impl BiolabClient {
         extract_object(resp)
     }
 
+    pub async fn create_lab_task(
+        &self,
+        data: &serde_json::Value,
+        lab_id: Option<&str>,
+    ) -> Result<Task, BiolabError> {
+        let path = lab_tasks_create_path();
+        let resp: serde_json::Value = if let Some(lab_id) = lab_id {
+            self.http
+                .post_with_headers(&path, data, &[("X-Current-Lab", lab_id)])
+                .await?
+        } else {
+            self.http.post(&path, data).await?
+        };
+        extract_object(resp)
+    }
+
     pub async fn update_task(
         &self,
         task_id: &str,
@@ -118,7 +147,7 @@ impl BiolabClient {
         &self,
         skip: u32,
         limit: u32,
-    ) -> Result<PaginatedList<StaffAssignment>, BiolabError> {
+    ) -> Result<PaginatedList<StaffAssignmentItem>, BiolabError> {
         let resp: serde_json::Value = self
             .http
             .get(&staff_task_assignments_path(skip, limit))
@@ -129,7 +158,7 @@ impl BiolabClient {
     pub async fn get_my_task_assignment(
         &self,
         assignment_id: &str,
-    ) -> Result<StaffAssignment, BiolabError> {
+    ) -> Result<StaffAssignmentDetail, BiolabError> {
         let resp: serde_json::Value = self
             .http
             .get(&staff_task_assignment_path(assignment_id))
@@ -190,12 +219,25 @@ fn task_path(task_id: &str) -> String {
     format!("/tasks/{}", url_encode(task_id))
 }
 
+fn task_types_path(skip: u32, limit: u32, search: Option<&str>) -> String {
+    let mut path = format!("/task-types?skip={skip}&limit={limit}");
+    if let Some(search) = search.filter(|value| !value.is_empty()) {
+        path.push_str("&search=");
+        path.push_str(&url_encode(search));
+    }
+    path
+}
+
 fn lab_task_types_path() -> String {
     "/lab/tasks/task-types".to_string()
 }
 
 fn lab_tasks_path(skip: u32, limit: u32) -> String {
     format!("/lab/tasks?skip={skip}&limit={limit}")
+}
+
+fn lab_tasks_create_path() -> &'static str {
+    "/lab/tasks"
 }
 
 fn lab_task_path(task_id: &str) -> String {
@@ -249,6 +291,7 @@ mod tests {
     fn builds_lab_task_paths() {
         assert_eq!(lab_task_types_path(), "/lab/tasks/task-types");
         assert_eq!(lab_tasks_path(10, 25), "/lab/tasks?skip=10&limit=25");
+        assert_eq!(lab_tasks_create_path(), "/lab/tasks");
         assert_eq!(lab_task_path("task 1"), "/lab/tasks/task+1");
         assert_eq!(
             lab_task_documents_path("task 1"),
@@ -265,6 +308,14 @@ mod tests {
     fn builds_general_task_paths() {
         assert_eq!(tasks_path(), "/tasks");
         assert_eq!(task_path("task 1"), "/tasks/task+1");
+        assert_eq!(
+            task_types_path(0, 100, None),
+            "/task-types?skip=0&limit=100"
+        );
+        assert_eq!(
+            task_types_path(0, 100, Some("sample qc")),
+            "/task-types?skip=0&limit=100&search=sample+qc"
+        );
     }
 
     #[test]
