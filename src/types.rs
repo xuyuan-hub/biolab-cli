@@ -329,6 +329,20 @@ pub struct Task {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskSummary {
+    pub id: String,
+    pub lab_id: String,
+    pub title: String,
+    pub status: String,
+    pub created_at: String,
+    pub updated_at: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub parts_summary: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskPart {
     pub id: String,
     pub task_id: String,

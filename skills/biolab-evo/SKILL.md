@@ -1,6 +1,6 @@
 ---
 name: biolab-evo
-description: "Use when operating Biolab evo compute TaskTypes for molecular design workflows: Tm calculation, codon optimization, NGS primer design/verification, barcode checks, complete primer assembly, correspondence files, and EXP2 BsaI Golden Gate primer/library design with plasmid file inputs."
+description: "Use when operating Biolab evo compute TaskTypes for molecular design workflows: Tm calculation, codon optimization, NGS primer design/verification, barcode checks, complete primer assembly, correspondence files, EXP2 BsaI Golden Gate primer/library design, and multi-stage evo workflows that chain compute TaskTypes with dependencies."
 ---
 
 # Biolab Evo Workflows
@@ -46,6 +46,61 @@ The payload should follow the live `input_schema`:
 ```
 
 Do not include `lab_id`; the CLI uses the current lab unless `--lab-id` is explicitly supplied.
+
+## Evo Multi-stage Workflows
+
+Use `../biolab-task/SKILL.md` plus this skill when the user asks to chain evo compute steps, such as "calculate Tm first, then design an NGS primer after that completes".
+
+Rules:
+
+- Query live TaskTypes for every stage, for example `biolab tasks types --search tm -f json` and `biolab tasks types --search ngs -f json`.
+- Use `biolab tasks create-workflow <json_file> -f json`.
+- Put `task_type_id` on each `parts[*]`; do not put a root-level `task_type_id` on workflow payloads.
+- Give each stage a stable `client_key`.
+- Add `dependencies` with `condition_type: "completed"` when a later stage should unlock only after an earlier stage completes.
+- Include each stage's required `input_data` explicitly. Do not assume a previous stage's output is passed into the next stage unless the live schema or documented API explicitly supports output references.
+
+Example: compute primer Tm, then unlock NGS primer design:
+
+```json
+{
+  "title": "Compute Tm then design NGS primer",
+  "description": "First calculate Tm, then design an NGS primer after the Tm stage completes.",
+  "parts": [
+    {
+      "client_key": "compute_tm",
+      "name": "Compute Tm",
+      "task_type_id": "<evo-compute-tm id>",
+      "input_data": {
+        "sequence": "ATGGTCTCAGGAAACCTAGACCCAGAAAAACACGAATGG"
+      }
+    },
+    {
+      "client_key": "design_ngs_primer",
+      "name": "Design NGS Primer",
+      "task_type_id": "<evo-design-ngs-primer id>",
+      "input_data": {
+        "template": "ATGGACGCTTCCCCGAGCATCTCCCCATTCCATGAGCGGGGAAGCGTCCATTGGCTGCCTTTAAAGTGCAGAAGTCAGAA"
+      }
+    }
+  ],
+  "dependencies": [
+    {
+      "prerequisite_client_key": "compute_tm",
+      "dependent_client_key": "design_ngs_primer",
+      "condition_type": "completed"
+    }
+  ]
+}
+```
+
+After creation, inspect progression with:
+
+```bash
+biolab tasks workflow <task_id> -f json
+```
+
+Expected compute workflow progression: dependent stages may start as `LOCKED`, become `READY` after prerequisites complete, then run automatically. Report per-stage status and `output_data.exit_code`; the root workflow status may lag behind completed compute stages.
 
 ## File Inputs
 

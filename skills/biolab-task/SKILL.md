@@ -1,6 +1,5 @@
 ---
 name: biolab-task
-version: 0.2.0
 description: "Use when the user asks in natural language to do, implement, run, arrange, schedule, or execute a Biolab task. First check available task types, then create either a single-stage task or a multi-stage workflow task once the required inputs are clear."
 metadata:
   requires:
@@ -31,6 +30,24 @@ Never assume the task type exists. Always check available task types first:
 
 ```bash
 biolab tasks types -f json
+```
+
+Use query options when the request needs narrowing, similar to Tashan germplasm queries:
+
+```bash
+biolab tasks types --search <keyword> --filters '<json_filter_array>' -f json
+```
+
+`--filters` is a JSON array of filter objects, for example:
+
+```json
+[
+  {
+    "field": "category",
+    "operator": "eq",
+    "value": "compute"
+  }
+]
 ```
 
 Then decide:
@@ -142,8 +159,20 @@ Important rules:
 - do not put a root-level `task_type_id` on workflow payloads
 - every workflow part must have a unique `client_key`
 - dependencies must point to existing `client_key` values
+- use `condition_type: "completed"` when the dependent stage should unlock only after the prerequisite stage completes successfully
 - each stage should use the task type that best matches that stage only
 - put staff assignees on the relevant stage with `assignee_ids`
+
+## Workflow Status Semantics
+
+When inspecting a workflow, interpret stage status as:
+
+- `LOCKED`: the stage is waiting for dependency conditions
+- `READY`: dependency conditions are satisfied and the stage is eligible to run
+- `in_progress`: the stage is running
+- `completed`: the stage finished successfully
+
+For compute-only workflows, a dependent compute stage may move from `LOCKED` to `READY`, then to `in_progress` and `completed` automatically once the prerequisite stage completes. The root task can remain `in_progress` or `waiting_lab_confirm` even when compute stages have output; check stage statuses and `part.output_data.exit_code` before reporting whether compute work finished.
 
 ## Lab Context
 

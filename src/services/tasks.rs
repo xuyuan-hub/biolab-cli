@@ -3,8 +3,8 @@ use crate::client::BiolabClient;
 use crate::errors::BiolabError;
 use crate::services::url_encode;
 use crate::types::{
-    StaffAssignmentDetail, StaffAssignmentItem, Task, TaskDocument, TaskResult, TaskType,
-    WorkflowDetail,
+    StaffAssignmentDetail, StaffAssignmentItem, Task, TaskDocument, TaskResult, TaskSummary,
+    TaskType, WorkflowDetail,
 };
 
 impl BiolabClient {
@@ -13,8 +13,9 @@ impl BiolabClient {
         skip: u32,
         limit: u32,
         search: Option<&str>,
+        filters: Option<&str>,
     ) -> Result<PaginatedList<TaskType>, BiolabError> {
-        let path = task_types_path(skip, limit, search);
+        let path = task_types_path(skip, limit, search, filters);
         let resp: serde_json::Value = self.http.get(&path).await?;
         extract_paginated(resp)
     }
@@ -39,7 +40,7 @@ impl BiolabClient {
         skip: u32,
         limit: u32,
         lab_id: Option<&str>,
-    ) -> Result<PaginatedList<Task>, BiolabError> {
+    ) -> Result<PaginatedList<TaskSummary>, BiolabError> {
         let path = lab_tasks_path(skip, limit);
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
             self.http
@@ -98,6 +99,13 @@ impl BiolabClient {
         }
     }
 
+    pub async fn download_task_output_file(
+        &self,
+        download_url: &str,
+    ) -> Result<Vec<u8>, BiolabError> {
+        self.http.download_absolute_bytes(download_url).await
+    }
+
     pub async fn list_lab_task_results(
         &self,
         task_id: &str,
@@ -125,22 +133,6 @@ impl BiolabClient {
         lab_id: Option<&str>,
     ) -> Result<Task, BiolabError> {
         let path = lab_tasks_create_path();
-        let resp: serde_json::Value = if let Some(lab_id) = lab_id {
-            self.http
-                .post_with_headers(&path, data, &[("X-Current-Lab", lab_id)])
-                .await?
-        } else {
-            self.http.post(&path, data).await?
-        };
-        extract_object(resp)
-    }
-
-    pub async fn create_lab_workflow_task(
-        &self,
-        data: &serde_json::Value,
-        lab_id: Option<&str>,
-    ) -> Result<Task, BiolabError> {
-        let path = lab_workflow_create_path();
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
             self.http
                 .post_with_headers(&path, data, &[("X-Current-Lab", lab_id)])
@@ -303,11 +295,15 @@ fn task_path(task_id: &str) -> String {
     format!("/tasks/{}", url_encode(task_id))
 }
 
-fn task_types_path(skip: u32, limit: u32, search: Option<&str>) -> String {
+fn task_types_path(skip: u32, limit: u32, search: Option<&str>, filters: Option<&str>) -> String {
     let mut path = format!("/task-types?skip={skip}&limit={limit}");
     if let Some(search) = search.filter(|value| !value.is_empty()) {
         path.push_str("&search=");
         path.push_str(&url_encode(search));
+    }
+    if let Some(filters) = filters.filter(|value| !value.is_empty()) {
+        path.push_str("&filters=");
+        path.push_str(&url_encode(filters));
     }
     path
 }
@@ -322,10 +318,6 @@ fn lab_tasks_path(skip: u32, limit: u32) -> String {
 
 fn lab_tasks_create_path() -> &'static str {
     "/lab/tasks"
-}
-
-fn lab_workflow_create_path() -> &'static str {
-    "/lab/tasks/workflows"
 }
 
 fn lab_task_path(task_id: &str) -> String {
@@ -396,7 +388,6 @@ mod tests {
         assert_eq!(lab_task_types_path(), "/lab/tasks/task-types");
         assert_eq!(lab_tasks_path(10, 25), "/lab/tasks?skip=10&limit=25");
         assert_eq!(lab_tasks_create_path(), "/lab/tasks");
-        assert_eq!(lab_workflow_create_path(), "/lab/tasks/workflows");
         assert_eq!(lab_task_path("task 1"), "/lab/tasks/task+1");
         assert_eq!(
             lab_task_documents_path("task 1"),
@@ -420,12 +411,21 @@ mod tests {
         assert_eq!(task_workflow_path("task 1"), "/tasks/task+1/workflow");
         assert_eq!(task_type_path("type 1"), "/task-types/type+1");
         assert_eq!(
-            task_types_path(0, 100, None),
+            task_types_path(0, 100, None, None),
             "/task-types?skip=0&limit=100"
         );
         assert_eq!(
-            task_types_path(0, 100, Some("sample qc")),
+            task_types_path(0, 100, Some("sample qc"), None),
             "/task-types?skip=0&limit=100&search=sample+qc"
+        );
+        assert_eq!(
+            task_types_path(
+                0,
+                20,
+                Some("ngs"),
+                Some(r#"[{"field":"category","operator":"eq","value":"compute"}]"#)
+            ),
+            "/task-types?skip=0&limit=20&search=ngs&filters=%5B%7B%22field%22%3A%22category%22%2C%22operator%22%3A%22eq%22%2C%22value%22%3A%22compute%22%7D%5D"
         );
     }
 

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use reqwest::header::{HeaderName, HeaderValue};
 use reqwest::Client;
 use serde::de::DeserializeOwned;
+use url::Url;
 
 use crate::api_response::parse_response;
 use crate::config::Config;
@@ -177,6 +178,55 @@ impl BiolabHttp {
             return Err(BiolabError::HttpError {
                 status,
                 path: path.into(),
+                detail,
+            });
+        }
+        resp.bytes()
+            .await
+            .map(|b| b.to_vec())
+            .map_err(BiolabError::RequestError)
+    }
+
+    pub(crate) async fn download_absolute_bytes(&self, url: &str) -> Result<Vec<u8>, BiolabError> {
+        let resp = self
+            .client
+            .get(url)
+            .send()
+            .await
+            .map_err(BiolabError::RequestError)?;
+        if resp.status().as_u16() == 401 && !url.contains("token=") {
+            if let Some(token) = self.config.load_token() {
+                if let Ok(mut retry_url) = Url::parse(url) {
+                    retry_url.query_pairs_mut().append_pair("token", &token);
+                    let retry_resp = self
+                        .client
+                        .get(retry_url)
+                        .send()
+                        .await
+                        .map_err(BiolabError::RequestError)?;
+                    if retry_resp.status().is_success() {
+                        return retry_resp
+                            .bytes()
+                            .await
+                            .map(|b| b.to_vec())
+                            .map_err(BiolabError::RequestError);
+                    }
+                    let status = retry_resp.status().as_u16();
+                    let detail = retry_resp.text().await.unwrap_or_default();
+                    return Err(BiolabError::HttpError {
+                        status,
+                        path: url.into(),
+                        detail,
+                    });
+                }
+            }
+        }
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let detail = resp.text().await.unwrap_or_default();
+            return Err(BiolabError::HttpError {
+                status,
+                path: url.into(),
                 detail,
             });
         }

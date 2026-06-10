@@ -1,4 +1,6 @@
 use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -9,7 +11,9 @@ use crate::client::BiolabClient;
 use crate::config::Config;
 use crate::errors::BiolabError;
 use crate::output::{print_paginated_items, print_pagination_metadata, print_result, OutputFormat};
-use crate::types::{StaffAssignmentItem, Task, TaskPart, TaskResult, TaskType, WorkflowDetail};
+use crate::types::{
+    StaffAssignmentItem, Task, TaskPart, TaskResult, TaskSummary, TaskType, WorkflowDetail,
+};
 
 #[derive(Args)]
 pub struct TasksArgs {
@@ -27,6 +31,9 @@ pub enum TasksCommand {
         limit: u32,
         #[arg(long)]
         search: Option<String>,
+        /// JSON array of filter objects, e.g. [{"field":"category","operator":"eq","value":"compute"}].
+        #[arg(long)]
+        filters: Option<String>,
         #[arg(long)]
         lab_id: Option<String>,
     },
@@ -90,6 +97,13 @@ pub enum TasksCommand {
     /// List task results visible to the lab.
     Results {
         id: String,
+        #[arg(long)]
+        lab_id: Option<String>,
+    },
+    /// Download compute output files from a task or workflow.
+    DownloadResults {
+        id: String,
+        output_dir: Option<String>,
         #[arg(long)]
         lab_id: Option<String>,
     },
@@ -158,14 +172,16 @@ pub async fn run(
             skip,
             limit,
             search,
+            filters,
             lab_id,
         } => {
             let should_search_task_types = search.as_deref().is_some_and(|value| !value.is_empty())
+                || filters.as_deref().is_some_and(|value| !value.is_empty())
                 || *skip != 0
                 || *limit != 100;
             let types = if should_search_task_types {
                 client
-                    .search_task_types(*skip, *limit, search.as_deref())
+                    .search_task_types(*skip, *limit, search.as_deref(), filters.as_deref())
                     .await?
             } else {
                 client.list_lab_task_types(lab_id.as_deref()).await?
@@ -181,7 +197,8 @@ pub async fn run(
             lab_id,
         } => {
             let mut data = read_json_file(file)?;
-            prepare_lab_task_payload(&mut data)?;
+            normalize_task_create_payload(&mut data)?;
+            validate_task_create_payload(&data)?;
             let task = if file_fields.is_empty() {
                 client.create_lab_task(&data, lab_id.as_deref()).await?
             } else {
@@ -198,11 +215,10 @@ pub async fn run(
         }
         TasksCommand::CreateWorkflow { file, lab_id } => {
             let mut data = read_json_file(file)?;
-            prepare_lab_task_payload(&mut data)?;
-            validate_lab_workflow_payload(&data)?;
-            let task = client
-                .create_lab_workflow_task(&data, lab_id.as_deref())
-                .await?;
+            normalize_task_create_payload(&mut data)?;
+            validate_task_create_payload(&data)?;
+            validate_task_workflow_payload(&data)?;
+            let task = client.create_lab_task(&data, lab_id.as_deref()).await?;
             print_result(&task, format);
         }
         TasksCommand::List {
@@ -285,6 +301,16 @@ pub async fn run(
                 print_experiment_results(&results, format);
             }
         }
+        TasksCommand::DownloadResults {
+            id,
+            output_dir,
+            lab_id,
+        } => {
+            let task = client.get_lab_task(id, lab_id.as_deref()).await?;
+            let workflow = get_task_workflow_if_available(&client, id).await?;
+            download_task_result_files(&client, &task, workflow.as_ref(), output_dir.as_deref())
+                .await?;
+        }
         TasksCommand::My { command } => run_my_tasks(&client, command, format).await?,
     }
 
@@ -349,32 +375,121 @@ fn read_json_file(path: &str) -> anyhow::Result<serde_json::Value> {
     Ok(serde_json::from_str(&content)?)
 }
 
-fn prepare_lab_task_payload(data: &mut serde_json::Value) -> anyhow::Result<()> {
+fn normalize_task_create_payload(data: &mut serde_json::Value) -> anyhow::Result<()> {
     let obj = data
         .as_object_mut()
         .ok_or_else(|| anyhow::anyhow!("Task payload must be a JSON object"))?;
+
     obj.remove("lab_id");
+    obj.remove("source_type");
+    obj.remove("source_id");
+
+    let root_task_type_id = obj.remove("task_type_id");
+    let root_input_data = obj.get("input_data").cloned();
+    let title = obj
+        .get("title")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("Stage 1")
+        .to_string();
+
+    if obj.get("parts").is_none() {
+        if let Some(task_type_id) = root_task_type_id.clone() {
+            let mut generated_part = serde_json::Map::new();
+            generated_part.insert("client_key".to_string(), serde_json::json!("part_1"));
+            generated_part.insert("name".to_string(), serde_json::json!(title));
+            generated_part.insert("task_type_id".to_string(), task_type_id);
+            if let Some(input_data) = root_input_data.clone() {
+                generated_part.insert("input_data".to_string(), input_data);
+            }
+            obj.insert(
+                "parts".to_string(),
+                serde_json::Value::Array(vec![serde_json::Value::Object(generated_part)]),
+            );
+        }
+        return Ok(());
+    }
+
+    let Some(parts) = obj.get_mut("parts").and_then(|value| value.as_array_mut()) else {
+        return Ok(());
+    };
+
+    let part_count = parts.len();
+    for (index, part) in parts.iter_mut().enumerate() {
+        let Some(part_obj) = part.as_object_mut() else {
+            continue;
+        };
+        if !part_obj.contains_key("client_key") {
+            part_obj.insert(
+                "client_key".to_string(),
+                serde_json::json!(format!("part_{}", index + 1)),
+            );
+        }
+        if part_count == 1 {
+            if !part_obj.contains_key("task_type_id") {
+                if let Some(task_type_id) = root_task_type_id.clone() {
+                    part_obj.insert("task_type_id".to_string(), task_type_id);
+                }
+            }
+            if !part_obj.contains_key("input_data") {
+                if let Some(input_data) = root_input_data.clone() {
+                    part_obj.insert("input_data".to_string(), input_data);
+                }
+            }
+            if !part_obj.contains_key("name") {
+                part_obj.insert("name".to_string(), serde_json::json!(title));
+            }
+        }
+    }
+
     Ok(())
 }
 
-fn validate_lab_workflow_payload(data: &serde_json::Value) -> anyhow::Result<()> {
+fn validate_task_create_payload(data: &serde_json::Value) -> anyhow::Result<()> {
     let obj = data
         .as_object()
-        .ok_or_else(|| anyhow::anyhow!("Workflow payload must be a JSON object"))?;
+        .ok_or_else(|| anyhow::anyhow!("Task payload must be a JSON object"))?;
 
     obj.get("title")
         .and_then(|value| value.as_str())
         .map(str::trim)
         .filter(|value| !value.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("Workflow payload requires a non-empty `title`"))?;
+        .ok_or_else(|| anyhow::anyhow!("Task payload requires a non-empty `title`"))?;
 
     let parts = obj
         .get("parts")
         .and_then(|value| value.as_array())
-        .ok_or_else(|| anyhow::anyhow!("Workflow payload requires a `parts` array"))?;
+        .ok_or_else(|| anyhow::anyhow!("Task payload requires a `parts` array"))?;
     if parts.is_empty() {
-        anyhow::bail!("Workflow payload must contain at least one part");
+        anyhow::bail!("Task payload must contain at least one part");
     }
+
+    for (index, part) in parts.iter().enumerate() {
+        let part_obj = part
+            .as_object()
+            .ok_or_else(|| anyhow::anyhow!("Task part #{} must be a JSON object", index + 1))?;
+        part_obj
+            .get("client_key")
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                anyhow::anyhow!("Task part #{} requires a non-empty `client_key`", index + 1)
+            })?;
+    }
+
+    Ok(())
+}
+
+fn validate_task_workflow_payload(data: &serde_json::Value) -> anyhow::Result<()> {
+    let obj = data
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("Workflow payload must be a JSON object"))?;
+    let parts = obj
+        .get("parts")
+        .and_then(|value| value.as_array())
+        .ok_or_else(|| anyhow::anyhow!("Workflow payload requires a `parts` array"))?;
 
     let mut client_keys = HashSet::new();
     for (index, part) in parts.iter().enumerate() {
@@ -474,6 +589,125 @@ fn write_download(document_id: &str, output: Option<&str>, bytes: &[u8]) -> anyh
     std::fs::write(&output, bytes)?;
     println!("Downloaded to {output}");
     Ok(())
+}
+
+async fn download_task_result_files(
+    client: &BiolabClient,
+    task: &Task,
+    workflow: Option<&WorkflowDetail>,
+    output_dir: Option<&str>,
+) -> anyhow::Result<()> {
+    let base_dir = output_dir
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(format!("task_results_{}", task.id)));
+    fs::create_dir_all(&base_dir)?;
+
+    let mut downloads = Vec::new();
+    collect_output_file_downloads("task", task.output_data.as_ref(), &mut downloads);
+    if !task.parts.is_empty() {
+        for part in &task.parts {
+            let label = format!("{}_{}", part.sort_order, sanitize_path_segment(&part.name));
+            collect_output_file_downloads(&label, part.output_data.as_ref(), &mut downloads);
+        }
+    } else if let Some(workflow) = workflow {
+        for part in &workflow.parts {
+            let label = format!("{}_{}", part.sort_order, sanitize_path_segment(&part.name));
+            collect_output_file_downloads(&label, part.output_data.as_ref(), &mut downloads);
+        }
+    }
+
+    if downloads.is_empty() {
+        println!("No downloadable result files found for task {}", task.id);
+        return Ok(());
+    }
+
+    for download in downloads {
+        let part_dir = base_dir.join(&download.group);
+        fs::create_dir_all(&part_dir)?;
+        let output_path = unique_output_path(&part_dir, &download.filename);
+        let bytes = client.download_task_output_file(&download.url).await?;
+        fs::write(&output_path, bytes)?;
+        println!("Downloaded {}", output_path.display());
+    }
+
+    Ok(())
+}
+
+struct OutputFileDownload {
+    group: String,
+    filename: String,
+    url: String,
+}
+
+fn collect_output_file_downloads(
+    group: &str,
+    output_data: Option<&serde_json::Value>,
+    downloads: &mut Vec<OutputFileDownload>,
+) {
+    let Some(files) = output_data
+        .and_then(|value| value.get("files"))
+        .and_then(|value| value.as_array())
+    else {
+        return;
+    };
+
+    for file in files {
+        let Some(url) = file.get("download_url").and_then(|value| value.as_str()) else {
+            continue;
+        };
+        let filename = file
+            .get("filename")
+            .and_then(|value| value.as_str())
+            .map(sanitize_path_segment)
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "result.bin".to_string());
+        downloads.push(OutputFileDownload {
+            group: group.to_string(),
+            filename,
+            url: url.to_string(),
+        });
+    }
+}
+
+fn unique_output_path(dir: &Path, filename: &str) -> PathBuf {
+    let candidate = dir.join(filename);
+    if !candidate.exists() {
+        return candidate;
+    }
+
+    let path = Path::new(filename);
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("result");
+    let extension = path.extension().and_then(|value| value.to_str());
+    for index in 2.. {
+        let filename = match extension {
+            Some(extension) => format!("{stem}_{index}.{extension}"),
+            None => format!("{stem}_{index}"),
+        };
+        let candidate = dir.join(filename);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    unreachable!("unbounded loop always returns")
+}
+
+fn sanitize_path_segment(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| match ch {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
+            ch if ch.is_control() => '_',
+            ch => ch,
+        })
+        .collect::<String>()
+        .trim()
+        .trim_matches('.')
+        .to_string()
 }
 
 async fn get_task_workflow_if_available(
@@ -921,20 +1155,20 @@ fn print_task_types(list: &crate::api_response::PaginatedList<TaskType>) {
     }
 }
 
-fn print_tasks(list: &crate::api_response::PaginatedList<Task>) {
+fn print_tasks(list: &crate::api_response::PaginatedList<TaskSummary>) {
     print_pagination_metadata(list);
     if list.items.is_empty() {
         println!("No tasks");
         return;
     }
     for task in &list.items {
-        println!(
-            "{}  {:20}  {:24}  {}",
-            task.id,
-            task.status,
-            task.task_type_id.as_deref().unwrap_or("-"),
-            task.title
-        );
+        let parts_summary = if task.parts_summary.is_empty() {
+            "-".to_string()
+        } else {
+            task.parts_summary.join(" | ")
+        };
+        println!("{}  {:20}  {}", task.id, task.status, task.title);
+        println!("  parts: {parts_summary}");
     }
 }
 
@@ -1067,11 +1301,44 @@ mod tests {
                 skip,
                 limit,
                 search,
+                filters,
                 lab_id,
             } => {
                 assert_eq!(skip, 10);
                 assert_eq!(limit, 25);
                 assert_eq!(search.as_deref(), Some("sample qc"));
+                assert_eq!(filters, None);
+                assert!(lab_id.is_none());
+            }
+            _ => panic!("expected task types command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_types_filters_option() {
+        let args = parse_tasks(&[
+            "tasks",
+            "types",
+            "--search",
+            "ngs",
+            "--filters",
+            r#"[{"field":"category","operator":"eq","value":"compute"}]"#,
+        ]);
+        match args.command {
+            TasksCommand::Types {
+                skip,
+                limit,
+                search,
+                filters,
+                lab_id,
+            } => {
+                assert_eq!(skip, 0);
+                assert_eq!(limit, 100);
+                assert_eq!(search.as_deref(), Some("ngs"));
+                assert_eq!(
+                    filters.as_deref(),
+                    Some(r#"[{"field":"category","operator":"eq","value":"compute"}]"#)
+                );
                 assert!(lab_id.is_none());
             }
             _ => panic!("expected task types command"),
@@ -1269,7 +1536,8 @@ mod tests {
                 }
             ]
         });
-        validate_lab_workflow_payload(&payload).expect("workflow payload should validate");
+        validate_task_create_payload(&payload).expect("task payload should validate");
+        validate_task_workflow_payload(&payload).expect("workflow payload should validate");
     }
 
     #[test]
@@ -1282,8 +1550,45 @@ mod tests {
                 "dependent_client_key": "missing"
             }]
         });
-        let err = validate_lab_workflow_payload(&payload).expect_err("payload should fail");
+        let err = validate_task_workflow_payload(&payload).expect_err("payload should fail");
         assert!(err.to_string().contains("unknown dependent client_key"));
+    }
+
+    #[test]
+    fn normalizes_legacy_single_stage_payload() {
+        let mut payload = json!({
+            "title": "Tm compute",
+            "task_type_id": "type-1",
+            "input_data": { "sequence": "ATGC" }
+        });
+        normalize_task_create_payload(&mut payload).expect("payload should normalize");
+        assert_eq!(
+            payload,
+            json!({
+                "title": "Tm compute",
+                "input_data": { "sequence": "ATGC" },
+                "parts": [{
+                    "client_key": "part_1",
+                    "name": "Tm compute",
+                    "task_type_id": "type-1",
+                    "input_data": { "sequence": "ATGC" }
+                }]
+            })
+        );
+    }
+
+    #[test]
+    fn normalizes_existing_parts_with_generated_client_keys() {
+        let mut payload = json!({
+            "title": "QC task",
+            "parts": [
+                { "name": "Stage A" },
+                { "name": "Stage B", "client_key": "custom_b" }
+            ]
+        });
+        normalize_task_create_payload(&mut payload).expect("payload should normalize");
+        assert_eq!(payload["parts"][0]["client_key"], "part_1");
+        assert_eq!(payload["parts"][1]["client_key"], "custom_b");
     }
 
     #[test]
