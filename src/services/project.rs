@@ -1,7 +1,7 @@
 use crate::api_response::{envelope_data, extract_array, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
-use crate::services::url_encode;
+use crate::services::{path_segment_encode, url_encode};
 
 impl BiolabClient {
     pub async fn get_project_by_slug(&self, slug: &str) -> Result<serde_json::Value, BiolabError> {
@@ -195,11 +195,11 @@ impl BiolabClient {
 }
 
 fn project_by_slug_path(slug: &str) -> String {
-    format!("/projects/by-slug/{}", url_encode(slug))
+    format!("/projects/by-slug/{}", path_segment_encode(slug))
 }
 
 fn project_germplasm_path(slug: &str) -> String {
-    format!("/project/{}/germplasm", url_encode(slug))
+    format!("/project/{}/germplasm", path_segment_encode(slug))
 }
 
 fn project_germplasm_list_path(
@@ -223,7 +223,7 @@ fn project_germplasm_detail_path(slug: &str, germplasm_id: &str) -> String {
     format!(
         "{}/{}",
         project_germplasm_path(slug),
-        url_encode(germplasm_id)
+        path_segment_encode(germplasm_id)
     )
 }
 
@@ -236,7 +236,7 @@ fn project_germplasm_subresource_path(slug: &str, germplasm_id: &str, resource: 
 }
 
 fn project_planting_path(slug: &str) -> String {
-    format!("/project/{}/planting", url_encode(slug))
+    format!("/project/{}/planting", path_segment_encode(slug))
 }
 
 fn project_planting_list_path(slug: &str, skip: u32, limit: u32) -> String {
@@ -244,7 +244,11 @@ fn project_planting_list_path(slug: &str, skip: u32, limit: u32) -> String {
 }
 
 fn project_planting_detail_path(slug: &str, order_id: &str) -> String {
-    format!("{}/{}", project_planting_path(slug), url_encode(order_id))
+    format!(
+        "{}/{}",
+        project_planting_path(slug),
+        path_segment_encode(order_id)
+    )
 }
 
 fn project_planting_subresource_path(slug: &str, order_id: &str, resource: &str) -> String {
@@ -261,7 +265,10 @@ mod tests {
 
     #[test]
     fn builds_project_lookup_path() {
-        assert_eq!(project_by_slug_path("ta shan"), "/projects/by-slug/ta+shan");
+        assert_eq!(
+            project_by_slug_path("ta shan"),
+            "/projects/by-slug/ta%20shan"
+        );
     }
 
     #[test]
@@ -278,7 +285,7 @@ mod tests {
         );
         assert_eq!(
             project_germplasm_detail_path("ta shan", "gp 1"),
-            "/project/ta+shan/germplasm/gp+1"
+            "/project/ta%20shan/germplasm/gp%201"
         );
         assert_eq!(
             project_germplasm_subresource_path("tashan", "gp-1", "stocks"),
@@ -294,7 +301,7 @@ mod tests {
         );
         assert_eq!(
             project_planting_detail_path("ta shan", "order 1"),
-            "/project/ta+shan/planting/order+1"
+            "/project/ta%20shan/planting/order%201"
         );
         assert_eq!(
             project_planting_subresource_path("tashan", "ord-1", "harvests"),

@@ -1,6 +1,7 @@
 use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
+use crate::services::path_segment_encode;
 use crate::types::Order;
 
 impl BiolabClient {
@@ -131,19 +132,19 @@ fn list_orders_path(skip: u32, limit: u32) -> String {
 }
 
 fn order_path(order_id: &str) -> String {
-    format!("/orders/{order_id}")
+    format!("/orders/{}", path_segment_encode(order_id))
 }
 
 fn send_order_path(order_id: &str) -> String {
-    format!("/orders/{order_id}/send")
+    format!("/orders/{}/send", path_segment_encode(order_id))
 }
 
 fn order_action_path(order_id: &str, action: &str) -> String {
-    format!("/orders/{order_id}/{action}")
+    format!("/orders/{}/{action}", path_segment_encode(order_id))
 }
 
 fn download_order_path(order_id: &str) -> String {
-    format!("/orders/{order_id}/download")
+    format!("/orders/{}/download", path_segment_encode(order_id))
 }
 
 #[cfg(test)]
@@ -168,5 +169,10 @@ mod tests {
             "/orders/ord_123/reject"
         );
         assert_eq!(download_order_path("ord_123"), "/orders/ord_123/download");
+    }
+
+    #[test]
+    fn encodes_order_id_path_segments() {
+        assert_eq!(order_path("ord 1/a"), "/orders/ord%201%2Fa");
     }
 }

@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use colored::Colorize;
@@ -29,6 +30,34 @@ fn temp_output_path(prefix: &str, ext: &str) -> std::path::PathBuf {
         .map(|d| d.as_secs())
         .unwrap_or(0);
     std::path::PathBuf::from(format!("{prefix}_{ts}.{ext}"))
+}
+
+pub fn unique_output_path(path: impl AsRef<Path>) -> PathBuf {
+    let path = path.as_ref();
+    if !path.exists() {
+        return path.to_path_buf();
+    }
+
+    let parent = path.parent().unwrap_or_else(|| Path::new(""));
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("output");
+    let extension = path.extension().and_then(|value| value.to_str());
+
+    for index in 2.. {
+        let filename = match extension {
+            Some(extension) => format!("{stem}_{index}.{extension}"),
+            None => format!("{stem}_{index}"),
+        };
+        let candidate = parent.join(filename);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    unreachable!("unbounded loop always returns")
 }
 
 /// Write a value to a file and print the file path. Returns `true` if the
@@ -277,5 +306,11 @@ mod tests {
             output,
             "{\n  \"count\": 14440,\n  \"total_pages\": 145,\n  \"current_page\": 1,\n  \"has_next\": true,\n  \"has_previous\": false\n}"
         );
+    }
+
+    #[test]
+    fn unique_output_path_returns_missing_path_unchanged() {
+        let path = std::path::PathBuf::from("definitely_missing_output_file.txt");
+        assert_eq!(super::unique_output_path(&path), path);
     }
 }

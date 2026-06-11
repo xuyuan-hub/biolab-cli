@@ -6,5 +6,5 @@ mod projects;
 mod tasks;
 mod templates;
 mod users;
-pub(crate) use helpers::{empty_body, single_field_body, url_encode};
+pub(crate) use helpers::{empty_body, path_segment_encode, single_field_body, url_encode};
 mod helpers;

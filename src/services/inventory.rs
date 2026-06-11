@@ -1,7 +1,7 @@
 use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
-use crate::services::url_encode;
+use crate::services::{path_segment_encode, url_encode};
 use crate::types::{Location, Stock, StockStats, Transaction};
 
 impl BiolabClient {
@@ -108,7 +108,7 @@ fn list_stocks_path(
         params.push(format!("primer_name={}", url_encode(name)));
     }
     if let Some(loc) = location_id {
-        params.push(format!("location_id={loc}"));
+        params.push(format!("location_id={}", url_encode(loc)));
     }
     if low_stock {
         params.push("low_stock=true".to_string());
@@ -121,19 +121,28 @@ fn list_stocks_path(
 }
 
 fn stock_path(stock_id: &str) -> String {
-    format!("/inventory/stocks/{stock_id}")
+    format!("/inventory/stocks/{}", path_segment_encode(stock_id))
 }
 
 fn stock_transactions_path(stock_id: &str) -> String {
-    format!("/inventory/stocks/{stock_id}/transactions")
+    format!(
+        "/inventory/stocks/{}/transactions",
+        path_segment_encode(stock_id)
+    )
 }
 
 fn checkin_path(stock_id: &str) -> String {
-    format!("/inventory/stocks/{stock_id}/checkin")
+    format!(
+        "/inventory/stocks/{}/checkin",
+        path_segment_encode(stock_id)
+    )
 }
 
 fn checkout_path(stock_id: &str) -> String {
-    format!("/inventory/stocks/{stock_id}/checkout")
+    format!(
+        "/inventory/stocks/{}/checkout",
+        path_segment_encode(stock_id)
+    )
 }
 
 fn stock_change_body(quantity: f64, purpose: &str) -> serde_json::Value {
@@ -187,6 +196,14 @@ mod tests {
         assert_eq!(
             checkout_path("stock-1"),
             "/inventory/stocks/stock-1/checkout"
+        );
+    }
+
+    #[test]
+    fn encodes_inventory_path_segments() {
+        assert_eq!(
+            stock_transactions_path("stock 1/a"),
+            "/inventory/stocks/stock%201%2Fa/transactions"
         );
     }
 

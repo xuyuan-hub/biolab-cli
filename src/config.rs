@@ -1,10 +1,10 @@
 use std::{
     fs,
-    io::{self, ErrorKind, Write},
+    io::{self, Write},
     path::PathBuf,
 };
 
-use keyring::Entry;
+use keyring::{Entry, Error as KeyringError};
 
 pub const DEFAULT_BASE_URL: &str = "http://8.136.56.203/api/v1";
 const TOKEN_ENV_VAR: &str = "BIOLAB_TOKEN";
@@ -88,8 +88,7 @@ impl Config {
                 eprintln!("警告：系统凭据库存储失败 ({keyring_error})，已按 {INSECURE_TOKEN_FILE_ENV_VAR}=1 回退到明文 token 文件。");
                 self.save_token_to_file(token)
             }
-            Err(keyring_error) => Err(io::Error::new(
-                ErrorKind::Other,
+            Err(keyring_error) => Err(io::Error::other(
                 format!(
                     "系统凭据库存储失败: {keyring_error}. \
                      默认不会在宿主机写入明文 token 文件；如确需在可信 headless 环境使用可写文件存储，\
@@ -100,9 +99,11 @@ impl Config {
     }
 
     pub fn remove_token(&self) -> io::Result<()> {
-        // Try keyring delete, ignore errors if credential doesn't exist
-        if let Ok(entry) = Entry::new(KEYRING_SERVICE, KEYRING_USERNAME) {
-            let _ = entry.delete_credential();
+        let entry = Entry::new(KEYRING_SERVICE, KEYRING_USERNAME)
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        match entry.delete_credential() {
+            Ok(()) | Err(KeyringError::NoEntry) => {}
+            Err(e) => return Err(io::Error::other(e.to_string())),
         }
         // Also remove legacy file if present
         if self.token_path.exists() {
@@ -115,7 +116,7 @@ impl Config {
     fn save_token_to_keyring(&self, token: &str) -> io::Result<()> {
         Entry::new(KEYRING_SERVICE, KEYRING_USERNAME)
             .and_then(|e| e.set_password(token))
-            .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))
+            .map_err(|e| io::Error::other(e.to_string()))
     }
 
     fn load_token_from_file(&self) -> Option<String> {

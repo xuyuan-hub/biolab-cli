@@ -116,6 +116,7 @@ pub async fn run(
             quantity,
             purpose,
         } => {
+            validate_quantity(*quantity)?;
             let stock = client.checkin(id, *quantity, purpose).await?;
             print_result(&stock, format);
         }
@@ -125,6 +126,7 @@ pub async fn run(
             purpose,
             experiment_ref,
         } => {
+            validate_quantity(*quantity)?;
             let stock = client
                 .checkout(id, *quantity, purpose, experiment_ref)
                 .await?;
@@ -143,4 +145,29 @@ pub async fn run(
         }
     }
     Ok(())
+}
+
+fn validate_quantity(quantity: f64) -> anyhow::Result<()> {
+    if !quantity.is_finite() || quantity <= 0.0 {
+        anyhow::bail!("quantity must be a positive finite number");
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_positive_finite_quantity() {
+        validate_quantity(0.1).expect("positive quantity should be valid");
+    }
+
+    #[test]
+    fn rejects_zero_negative_and_non_finite_quantities() {
+        assert!(validate_quantity(0.0).is_err());
+        assert!(validate_quantity(-1.0).is_err());
+        assert!(validate_quantity(f64::INFINITY).is_err());
+        assert!(validate_quantity(f64::NAN).is_err());
+    }
 }

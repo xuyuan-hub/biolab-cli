@@ -10,7 +10,10 @@ use serde::Serialize;
 use crate::client::BiolabClient;
 use crate::config::Config;
 use crate::errors::BiolabError;
-use crate::output::{print_paginated_items, print_pagination_metadata, print_result, OutputFormat};
+use crate::output::{
+    print_paginated_items, print_pagination_metadata, print_result,
+    unique_output_path as unique_download_path, OutputFormat,
+};
 use crate::types::{
     StaffAssignmentItem, Task, TaskPart, TaskResult, TaskSummary, TaskType, WorkflowDetail,
 };
@@ -513,6 +516,7 @@ fn validate_task_workflow_payload(data: &serde_json::Value) -> anyhow::Result<()
         }
     }
 
+    let mut dependency_graph: HashMap<String, Vec<String>> = HashMap::new();
     if let Some(dependencies) = obj.get("dependencies") {
         let dependencies = dependencies
             .as_array()
@@ -561,9 +565,64 @@ fn validate_task_workflow_payload(data: &serde_json::Value) -> anyhow::Result<()
                     index + 1
                 );
             }
+            dependency_graph
+                .entry(prerequisite.to_string())
+                .or_default()
+                .push(dependent.to_string());
         }
     }
 
+    ensure_workflow_dependencies_are_acyclic(&dependency_graph)?;
+
+    Ok(())
+}
+
+fn ensure_workflow_dependencies_are_acyclic(
+    graph: &HashMap<String, Vec<String>>,
+) -> anyhow::Result<()> {
+    let mut visiting = HashSet::new();
+    let mut visited = HashSet::new();
+    let mut stack = Vec::new();
+
+    for node in graph.keys() {
+        detect_workflow_dependency_cycle(node, graph, &mut visiting, &mut visited, &mut stack)?;
+    }
+
+    Ok(())
+}
+
+fn detect_workflow_dependency_cycle(
+    node: &str,
+    graph: &HashMap<String, Vec<String>>,
+    visiting: &mut HashSet<String>,
+    visited: &mut HashSet<String>,
+    stack: &mut Vec<String>,
+) -> anyhow::Result<()> {
+    if visited.contains(node) {
+        return Ok(());
+    }
+    if visiting.contains(node) {
+        let start = stack.iter().position(|item| item == node).unwrap_or(0);
+        let mut cycle = stack[start..].to_vec();
+        cycle.push(node.to_string());
+        anyhow::bail!(
+            "Workflow dependencies contain a cycle: {}",
+            cycle.join(" -> ")
+        );
+    }
+
+    visiting.insert(node.to_string());
+    stack.push(node.to_string());
+
+    if let Some(children) = graph.get(node) {
+        for child in children {
+            detect_workflow_dependency_cycle(child, graph, visiting, visited, stack)?;
+        }
+    }
+
+    stack.pop();
+    visiting.remove(node);
+    visited.insert(node.to_string());
     Ok(())
 }
 
@@ -586,8 +645,9 @@ fn write_download(document_id: &str, output: Option<&str>, bytes: &[u8]) -> anyh
     let output = output
         .map(ToString::to_string)
         .unwrap_or_else(|| format!("task_document_{document_id}"));
-    std::fs::write(&output, bytes)?;
-    println!("Downloaded to {output}");
+    let output_path = unique_download_path(output);
+    std::fs::write(&output_path, bytes)?;
+    println!("Downloaded to {}", output_path.display());
     Ok(())
 }
 
@@ -1552,6 +1612,23 @@ mod tests {
         });
         let err = validate_task_workflow_payload(&payload).expect_err("payload should fail");
         assert!(err.to_string().contains("unknown dependent client_key"));
+    }
+
+    #[test]
+    fn rejects_workflow_dependency_cycle() {
+        let payload = json!({
+            "title": "Cyclic workflow",
+            "parts": [
+                { "client_key": "a" },
+                { "client_key": "b" }
+            ],
+            "dependencies": [
+                { "prerequisite_client_key": "a", "dependent_client_key": "b" },
+                { "prerequisite_client_key": "b", "dependent_client_key": "a" }
+            ]
+        });
+        let err = validate_task_workflow_payload(&payload).expect_err("payload should fail");
+        assert!(err.to_string().contains("cycle"));
     }
 
     #[test]

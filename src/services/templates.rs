@@ -1,7 +1,7 @@
 use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
-use crate::services::url_encode;
+use crate::services::{path_segment_encode, url_encode};
 use crate::types::Template;
 
 impl BiolabClient {
@@ -52,7 +52,7 @@ impl BiolabClient {
 }
 
 fn template_path(id: &str) -> String {
-    format!("/order-info-templates/{id}")
+    format!("/order-info-templates/{}", path_segment_encode(id))
 }
 
 fn default_template_path(order_type: Option<&str>) -> String {
@@ -67,7 +67,10 @@ fn default_template_path(order_type: Option<&str>) -> String {
 }
 
 fn set_default_template_path(id: &str) -> String {
-    format!("/order-info-templates/{id}/set-default")
+    format!(
+        "/order-info-templates/{}/set-default",
+        path_segment_encode(id)
+    )
 }
 
 #[cfg(test)]
@@ -80,6 +83,14 @@ mod tests {
         assert_eq!(
             set_default_template_path("tpl-1"),
             "/order-info-templates/tpl-1/set-default"
+        );
+    }
+
+    #[test]
+    fn encodes_template_path_segments() {
+        assert_eq!(
+            set_default_template_path("tpl 1/a"),
+            "/order-info-templates/tpl%201%2Fa/set-default"
         );
     }
 

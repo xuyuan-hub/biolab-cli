@@ -1,6 +1,7 @@
 use crate::api_response::{envelope_data, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
+use crate::services::path_segment_encode;
 
 impl BiolabClient {
     pub async fn list_projects(
@@ -76,15 +77,19 @@ fn list_projects_path(skip: u32, limit: u32) -> String {
 }
 
 fn project_path(project_id: &str) -> String {
-    format!("/projects/{project_id}")
+    format!("/projects/{}", path_segment_encode(project_id))
 }
 
 fn project_members_path(project_id: &str) -> String {
-    format!("/projects/{project_id}/members")
+    format!("/projects/{}/members", path_segment_encode(project_id))
 }
 
 fn project_member_path(project_id: &str, user_id: &str) -> String {
-    format!("/projects/{project_id}/members/{user_id}")
+    format!(
+        "/projects/{}/members/{}",
+        path_segment_encode(project_id),
+        path_segment_encode(user_id)
+    )
 }
 
 fn add_member_body(user_id: &str, role: &str) -> serde_json::Value {
@@ -109,6 +114,14 @@ mod tests {
         assert_eq!(
             project_member_path("project-1", "user-1"),
             "/projects/project-1/members/user-1"
+        );
+    }
+
+    #[test]
+    fn encodes_project_member_path_segments() {
+        assert_eq!(
+            project_member_path("project 1/a", "user 1/b"),
+            "/projects/project%201%2Fa/members/user%201%2Fb"
         );
     }
 

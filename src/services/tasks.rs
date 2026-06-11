@@ -1,7 +1,7 @@
 use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
-use crate::services::url_encode;
+use crate::services::{path_segment_encode, url_encode};
 use crate::types::{
     StaffAssignmentDetail, StaffAssignmentItem, Task, TaskDocument, TaskResult, TaskSummary,
     TaskType, WorkflowDetail,
@@ -135,10 +135,10 @@ impl BiolabClient {
         let path = lab_tasks_create_path();
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
             self.http
-                .post_with_headers(&path, data, &[("X-Current-Lab", lab_id)])
+                .post_with_headers(path, data, &[("X-Current-Lab", lab_id)])
                 .await?
         } else {
-            self.http.post(&path, data).await?
+            self.http.post(path, data).await?
         };
         extract_object(resp)
     }
@@ -292,7 +292,7 @@ fn tasks_path() -> &'static str {
 }
 
 fn task_path(task_id: &str) -> String {
-    format!("/tasks/{}", url_encode(task_id))
+    format!("/tasks/{}", path_segment_encode(task_id))
 }
 
 fn task_types_path(skip: u32, limit: u32, search: Option<&str>, filters: Option<&str>) -> String {
@@ -321,7 +321,7 @@ fn lab_tasks_create_path() -> &'static str {
 }
 
 fn lab_task_path(task_id: &str) -> String {
-    format!("/lab/tasks/{}", url_encode(task_id))
+    format!("/lab/tasks/{}", path_segment_encode(task_id))
 }
 
 fn lab_task_documents_path(task_id: &str) -> String {
@@ -333,7 +333,10 @@ fn lab_task_upload_field_path(task_id: &str) -> String {
 }
 
 fn lab_task_document_download_path(document_id: &str) -> String {
-    format!("/lab/tasks/documents/{}/download", url_encode(document_id))
+    format!(
+        "/lab/tasks/documents/{}/download",
+        path_segment_encode(document_id)
+    )
 }
 
 fn lab_task_results_path(task_id: &str) -> String {
@@ -345,7 +348,7 @@ fn task_workflow_path(task_id: &str) -> String {
 }
 
 fn task_type_path(task_type_id: &str) -> String {
-    format!("/task-types/{}", url_encode(task_type_id))
+    format!("/task-types/{}", path_segment_encode(task_type_id))
 }
 
 fn staff_task_assignments_path(skip: u32, limit: u32) -> String {
@@ -353,7 +356,10 @@ fn staff_task_assignments_path(skip: u32, limit: u32) -> String {
 }
 
 fn staff_task_assignment_path(assignment_id: &str) -> String {
-    format!("/staff/tasks/assignments/{}", url_encode(assignment_id))
+    format!(
+        "/staff/tasks/assignments/{}",
+        path_segment_encode(assignment_id)
+    )
 }
 
 fn staff_task_assignment_status_path(assignment_id: &str) -> String {
@@ -365,18 +371,18 @@ fn staff_task_assignment_results_path(assignment_id: &str) -> String {
 }
 
 fn staff_task_documents_path(task_id: &str) -> String {
-    format!("/staff/tasks/{}/documents", url_encode(task_id))
+    format!("/staff/tasks/{}/documents", path_segment_encode(task_id))
 }
 
 fn staff_task_document_download_path(document_id: &str) -> String {
     format!(
         "/staff/tasks/documents/{}/download",
-        url_encode(document_id)
+        path_segment_encode(document_id)
     )
 }
 
 fn task_upload_field_path(task_id: &str) -> String {
-    format!("/tasks/{}/upload-field", url_encode(task_id))
+    format!("/tasks/{}/upload-field", path_segment_encode(task_id))
 }
 
 #[cfg(test)]
@@ -388,28 +394,31 @@ mod tests {
         assert_eq!(lab_task_types_path(), "/lab/tasks/task-types");
         assert_eq!(lab_tasks_path(10, 25), "/lab/tasks?skip=10&limit=25");
         assert_eq!(lab_tasks_create_path(), "/lab/tasks");
-        assert_eq!(lab_task_path("task 1"), "/lab/tasks/task+1");
+        assert_eq!(lab_task_path("task 1"), "/lab/tasks/task%201");
         assert_eq!(
             lab_task_documents_path("task 1"),
-            "/lab/tasks/task+1/documents"
+            "/lab/tasks/task%201/documents"
         );
         assert_eq!(
             lab_task_upload_field_path("task 1"),
-            "/lab/tasks/task+1/upload-field"
+            "/lab/tasks/task%201/upload-field"
         );
         assert_eq!(
             lab_task_document_download_path("doc 1"),
-            "/lab/tasks/documents/doc+1/download"
+            "/lab/tasks/documents/doc%201/download"
         );
-        assert_eq!(lab_task_results_path("task 1"), "/lab/tasks/task+1/results");
+        assert_eq!(
+            lab_task_results_path("task 1"),
+            "/lab/tasks/task%201/results"
+        );
     }
 
     #[test]
     fn builds_general_task_paths() {
         assert_eq!(tasks_path(), "/tasks");
-        assert_eq!(task_path("task 1"), "/tasks/task+1");
-        assert_eq!(task_workflow_path("task 1"), "/tasks/task+1/workflow");
-        assert_eq!(task_type_path("type 1"), "/task-types/type+1");
+        assert_eq!(task_path("task 1"), "/tasks/task%201");
+        assert_eq!(task_workflow_path("task 1"), "/tasks/task%201/workflow");
+        assert_eq!(task_type_path("type 1"), "/task-types/type%201");
         assert_eq!(
             task_types_path(0, 100, None, None),
             "/task-types?skip=0&limit=100"
@@ -437,23 +446,23 @@ mod tests {
         );
         assert_eq!(
             staff_task_assignment_path("assignment 1"),
-            "/staff/tasks/assignments/assignment+1"
+            "/staff/tasks/assignments/assignment%201"
         );
         assert_eq!(
             staff_task_assignment_status_path("assignment 1"),
-            "/staff/tasks/assignments/assignment+1/status"
+            "/staff/tasks/assignments/assignment%201/status"
         );
         assert_eq!(
             staff_task_assignment_results_path("assignment 1"),
-            "/staff/tasks/assignments/assignment+1/results"
+            "/staff/tasks/assignments/assignment%201/results"
         );
         assert_eq!(
             staff_task_documents_path("task 1"),
-            "/staff/tasks/task+1/documents"
+            "/staff/tasks/task%201/documents"
         );
         assert_eq!(
             staff_task_document_download_path("doc 1"),
-            "/staff/tasks/documents/doc+1/download"
+            "/staff/tasks/documents/doc%201/download"
         );
     }
 }

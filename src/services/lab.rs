@@ -1,7 +1,7 @@
 use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
 use crate::client::BiolabClient;
 use crate::errors::BiolabError;
-use crate::services::{empty_body, single_field_body};
+use crate::services::{empty_body, path_segment_encode, single_field_body};
 use crate::types::{Application, ApprovalRule, Invitation, Lab, LabMember, Order, Stock};
 
 impl BiolabClient {
@@ -168,7 +168,7 @@ fn invite_body(email: &str, role: &str) -> serde_json::Value {
 }
 
 fn member_path(user_id: &str) -> String {
-    format!("/lab/members/{user_id}")
+    format!("/lab/members/{}", path_segment_encode(user_id))
 }
 
 fn lab_orders_path() -> &'static str {
@@ -184,19 +184,22 @@ fn lab_inventory_path() -> &'static str {
 }
 
 fn invitation_action_path(invitation_id: &str, action: &str) -> String {
-    format!("/lab/invitations/{invitation_id}/{action}")
+    format!(
+        "/lab/invitations/{}/{action}",
+        path_segment_encode(invitation_id)
+    )
 }
 
 fn join_lab_path(lab_id: &str) -> String {
-    format!("/lab/join/{lab_id}")
+    format!("/lab/join/{}", path_segment_encode(lab_id))
 }
 
 fn application_action_path(app_id: &str, action: &str) -> String {
-    format!("/lab/applications/{app_id}/{action}")
+    format!("/lab/applications/{}/{action}", path_segment_encode(app_id))
 }
 
 fn approval_rule_path(rule_id: &str) -> String {
-    format!("/lab/approval-rules/{rule_id}")
+    format!("/lab/approval-rules/{}", path_segment_encode(rule_id))
 }
 
 #[cfg(test)]
@@ -228,6 +231,12 @@ mod tests {
         assert_eq!(lab_inventory_path(), "/lab/inventory/stocks");
         assert_eq!(join_lab_path("lab-1"), "/lab/join/lab-1");
         assert_eq!(approval_rule_path("rule-1"), "/lab/approval-rules/rule-1");
+    }
+
+    #[test]
+    fn encodes_lab_path_segments() {
+        assert_eq!(member_path("user 1/a"), "/lab/members/user%201%2Fa");
+        assert_eq!(join_lab_path("lab 1/a"), "/lab/join/lab%201%2Fa");
     }
 
     #[test]

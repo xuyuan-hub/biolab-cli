@@ -5,7 +5,8 @@ use clap::{Args, Subcommand};
 use crate::client::BiolabClient;
 use crate::config::Config;
 use crate::output::{
-    print_order, print_order_brief, print_pagination_metadata, print_result, OutputFormat,
+    print_order, print_order_brief, print_pagination_metadata, print_result, unique_output_path,
+    OutputFormat,
 };
 
 #[derive(Args)]
@@ -160,18 +161,21 @@ pub async fn run(
         }
         OrdersCommand::Download { id, output } => {
             let bytes = client.download_order(id).await?;
-            std::fs::write(output, &bytes)?;
-            println!("Downloaded to {output}");
+            let output_path = unique_output_path(output);
+            std::fs::write(&output_path, &bytes)?;
+            println!("Downloaded to {}", output_path.display());
         }
         OrdersCommand::DownloadPrimerTemplate { output } => {
             let bytes = client.download_primer_template().await?;
-            std::fs::write(output, &bytes)?;
-            println!("Downloaded to {output}");
+            let output_path = unique_output_path(output);
+            std::fs::write(&output_path, &bytes)?;
+            println!("Downloaded to {}", output_path.display());
         }
         OrdersCommand::DownloadSequencingTemplate { output } => {
             let bytes = client.download_sequencing_template().await?;
-            std::fs::write(output, &bytes)?;
-            println!("Downloaded to {output}");
+            let output_path = unique_output_path(output);
+            std::fs::write(&output_path, &bytes)?;
+            println!("Downloaded to {}", output_path.display());
         }
         OrdersCommand::UploadPrimerExcel { file } => {
             let result = client.upload_primer_excel(file).await?;
