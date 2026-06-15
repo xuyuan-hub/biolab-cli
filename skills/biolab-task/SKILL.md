@@ -38,6 +38,19 @@ Use query options when the request needs narrowing, similar to Tashan germplasm 
 biolab tasks types --search <keyword> --filters '<json_filter_array>' -f json
 ```
 
+## Inventory Gate For Experiment Tasks
+
+When the task represents an experiment, lab execution, sample processing, PCR, sequencing prep, reagent use, consumable use, primer use, or any workflow that may consume inventory:
+
+1. Read `../biolab-inventory/SKILL.md`.
+2. Extract inventory requirements and assign stable `requirement_key` values.
+3. Run `biolab inventory check <requirements.json> -f json` before creating a task that is ready to execute.
+4. If any requirement is `missing_item`, `ambiguous_item`, or `insufficient_stock`, do not create an executable task. Report the missing inventory and move to ordering/restock discussion.
+5. Do not checkout inventory during task planning or task creation.
+6. During actual execution, re-check inventory and use `checkout` or `checkout-item` with `task_id`, `part_id`, and `requirement_key`.
+
+`inventory check` is a client-side aggregate query. It is not a reservation or atomic stock lock.
+
 `--filters` is a JSON array of filter objects, for example:
 
 ```json

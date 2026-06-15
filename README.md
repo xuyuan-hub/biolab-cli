@@ -136,7 +136,8 @@ After installing skills via `npx skills add` or `biolab skills install`, the Age
 | `biolab-shared` | Core CLI usage, auth, credential chain, OpenAPI schema rules, error handling |
 | `biolab-orders` | Primer synthesis and sequencing orders, order JSON, Excel upload/download, status changes |
 | `biolab-templates` | Order-info templates for company, invoice, PI, payment, recipient, and notes |
-| `biolab-inventory` | Stock listing, checkin/checkout, transactions, storage locations |
+| `biolab-inventory` | Generic inventory items, stock batches, inventory checks, checkin/checkout, FIFO checkout, adjust/transfer, transactions, storage locations |
+| `biolab-experiment` | Experiment planning and execution workflow with inventory checks before task creation and task-linked checkout during execution |
 | `biolab-lab` | Lab info, members, roles, invitations, applications, approval rules |
 | `biolab-project` | Project slug workflows for germplasm, sequencing files, stocks, planting orders, and harvests |
 | `biolab-users` | Login status, authenticated profile, contact fields, password changes |
@@ -413,7 +414,8 @@ biolab skills install --global
 | `biolab-shared` | CLI 核心用法、认证、凭据链、OpenAPI schema 规则、错误处理 |
 | `biolab-orders` | 引物合成和测序订单、订单 JSON、Excel 上传/下载、状态变更 |
 | `biolab-templates` | 订单信息模板：单位、发票、PI、付款方式、收货地址、备注 |
-| `biolab-inventory` | 库存列表、入库、出库、交易记录、存储位置 |
+| `biolab-inventory` | 通用物料、库存批次、库存检查、入库/出库、FIFO 出库、调整/转移、交易记录、存储位置 |
+| `biolab-experiment` | 实验方案与执行工作流：创建任务前检查库存，执行阶段关联任务出库 |
 | `biolab-lab` | 课题组信息、成员、角色、邀请、入组申请、审批规则 |
 | `biolab-project` | 按项目 slug 操作种质、测序文件、库存、种植单和收获记录 |
 | `biolab-users` | 登录状态、当前用户资料、联系人字段、密码修改 |

@@ -17,20 +17,21 @@ pub struct CliAuthResponse {
     pub poll_key: String,
 }
 
-pub fn check_status(config: &Config) -> bool {
+pub async fn check_status(config: &Config) -> bool {
     let Some(token) = config.load_token() else {
         println!("未登录（未找到可用 token）");
         return false;
     };
     let url = format!("{}/users/me", config.base_url);
-    let client = reqwest::blocking::Client::new();
+    let client = Client::new();
     match client
         .get(&url)
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
         .send()
+        .await
     {
         Ok(resp) if resp.status().is_success() => {
-            if let Ok(user) = resp.json::<crate::types::User>() {
+            if let Ok(user) = resp.json::<crate::types::User>().await {
                 println!("已登录: {} ({})", user.full_name, user.email);
                 true
             } else {
@@ -52,7 +53,7 @@ pub fn check_status(config: &Config) -> bool {
 pub async fn login(config: &Config) -> bool {
     if config.load_token().is_some() {
         println!("已有 token，尝试验证...");
-        if check_status(config) {
+        if check_status(config).await {
             println!("当前 token 有效，无需重新登录。");
             println!("如需重新登录，请先执行 `biolab logout`");
             return true;

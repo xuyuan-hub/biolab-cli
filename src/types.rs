@@ -215,11 +215,57 @@ pub struct Template {
 pub struct Stock {
     pub id: String,
     #[serde(default)]
+    pub stock_type: Option<String>,
+    #[serde(default)]
+    pub item_id: Option<String>,
+    #[serde(default)]
+    pub source_item_id: Option<String>,
+    #[serde(default)]
+    pub order_id: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
     pub primer_name: Option<String>,
+    #[serde(default)]
+    pub sequence: Option<String>,
+    #[serde(default, deserialize_with = "opt_string_or_f64")]
+    pub total_quantity: Option<f64>,
     #[serde(default, deserialize_with = "opt_string_or_f64")]
     pub remaining_quantity: Option<f64>,
     #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub unit_price: Option<String>,
+    #[serde(default)]
+    pub total_price: Option<String>,
+    #[serde(default)]
+    pub operator_id: Option<String>,
+    #[serde(default)]
+    pub storage_location_id: Option<String>,
+    #[serde(default)]
+    pub batch_label: Option<String>,
+    #[serde(default)]
     pub location_path: Option<String>,
+    #[serde(default)]
+    pub germplasm_id: Option<String>,
+    #[serde(default)]
+    pub plate_id: Option<String>,
+    #[serde(default)]
+    pub recorded_by: Option<String>,
+    #[serde(default)]
+    pub variety: Option<String>,
+    #[serde(default)]
+    pub generation: Option<String>,
+    #[serde(default)]
+    pub origin: Option<String>,
+    #[serde(default)]
+    pub weight_g: Option<String>,
+    #[serde(default)]
+    pub notes: Option<String>,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub updated_at: Option<String>,
     #[serde(default)]
     pub transactions: Vec<Transaction>,
 }
@@ -227,13 +273,70 @@ pub struct Stock {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
     pub id: String,
+    #[serde(default)]
+    pub stock_id: Option<String>,
+    #[serde(default)]
+    pub user_id: Option<String>,
     pub r#type: String,
     #[serde(deserialize_with = "string_or_f64")]
     pub quantity: f64,
-    pub purpose: String,
+    #[serde(default, deserialize_with = "opt_string_or_f64")]
+    pub remaining_after: Option<f64>,
+    #[serde(default)]
+    pub unit_price: Option<String>,
+    #[serde(default)]
+    pub total_amount: Option<String>,
+    #[serde(default)]
+    pub recipient: Option<String>,
+    #[serde(default)]
+    pub purpose: Option<String>,
     #[serde(default)]
     pub experiment_ref: Option<String>,
+    #[serde(default)]
+    pub task_id: Option<String>,
+    #[serde(default)]
+    pub part_id: Option<String>,
+    #[serde(default)]
+    pub requirement_key: Option<String>,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InventoryItem {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub category: Option<String>,
+    #[serde(default)]
+    pub specification: Option<String>,
+    #[serde(default)]
+    pub supplier: Option<String>,
+    #[serde(default)]
+    pub catalog_number: Option<String>,
+    #[serde(default)]
+    pub unit: Option<String>,
+    #[serde(default)]
+    pub storage_condition: Option<String>,
+    #[serde(default)]
+    pub notes: Option<String>,
+    #[serde(default)]
+    pub is_active: Option<bool>,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub updated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StockOutResponse {
+    #[serde(default, deserialize_with = "opt_string_or_f64")]
+    pub total_quantity: Option<f64>,
+    #[serde(default)]
+    pub total_amount: Option<String>,
+    #[serde(default)]
+    pub avg_unit_price: Option<String>,
+    #[serde(default)]
+    pub details: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -247,7 +350,13 @@ pub struct Location {
     pub id: String,
     pub name: String,
     #[serde(default)]
+    pub parent_id: Option<String>,
+    #[serde(default)]
     pub path: Option<String>,
+    #[serde(default)]
+    pub full_path: Option<String>,
+    #[serde(default)]
+    pub children: Vec<Location>,
 }
 
 // ============================================================

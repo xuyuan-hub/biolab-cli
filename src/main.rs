@@ -118,7 +118,7 @@ async fn main() {
             Ok(())
         }
         Some(Commands::Status) => {
-            let logged_in = check_status(&config);
+            let logged_in = check_status(&config).await;
             if !logged_in {
                 std::process::exit(1);
             }

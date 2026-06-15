@@ -216,11 +216,14 @@ pub fn print_stocks(stocks: &[Stock]) {
         println!(
             "{}  {:20}  剩余:{}  位置:{}",
             s.id,
-            s.primer_name.as_deref().unwrap_or(""),
+            s.name.as_deref().or(s.primer_name.as_deref()).unwrap_or(""),
             s.remaining_quantity
                 .map(|v| v.to_string())
                 .unwrap_or_else(|| "0".into()),
-            s.location_path.as_deref().unwrap_or(""),
+            s.location_path
+                .as_deref()
+                .or(s.storage_location_id.as_deref())
+                .unwrap_or(""),
         );
     }
 }
