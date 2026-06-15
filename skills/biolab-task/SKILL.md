@@ -44,12 +44,12 @@ When the task represents an experiment, lab execution, sample processing, PCR, s
 
 1. Read `../biolab-inventory/SKILL.md`.
 2. Extract inventory requirements and assign stable `requirement_key` values.
-3. Run `biolab inventory check <requirements.json> -f json` before creating a task that is ready to execute.
-4. If any requirement is `missing_item`, `ambiguous_item`, or `insufficient_stock`, do not create an executable task. Report the missing inventory and move to ordering/restock discussion.
+3. **Actively search** for each requirement — do NOT rely on `biolab inventory check`. Use `biolab inventory items --search` with multiple search terms per requirement, then `biolab inventory summary --search` to check stock. The LLM is responsible for matching search results to requirements.
+4. If any requirement cannot be matched to in-stock items after thorough searching, do not create an executable task. Report the missing inventory and move to ordering/restock discussion.
 5. Do not checkout inventory during task planning or task creation.
-6. During actual execution, re-check inventory and use `checkout` or `checkout-item` with `task_id`, `part_id`, and `requirement_key`.
+6. During actual execution, re-search inventory and use `checkout` or `checkout-item` with `task_id`, `part_id`, and `requirement_key`.
 
-`inventory check` is a client-side aggregate query. It is not a reservation or atomic stock lock.
+Active search is a point-in-time snapshot — it is not a reservation or atomic stock lock. Re-search at execution time.
 
 `--filters` is a JSON array of filter objects, for example:
 

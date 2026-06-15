@@ -18,29 +18,39 @@ Before API calls, read:
 ## Core Workflow
 
 1. Extract inventory requirements from the experiment plan. Give every requirement a stable `requirement_key`, such as `pcr.polymerase`, `pcr.dntp`, or `sequencing.primer_f`.
-2. Check inventory before calling the experiment executable or task-ready:
+2. **Actively search** for each requirement in inventory — do NOT rely on a single aggregate check command. Use multiple search terms per requirement (Chinese, English, abbreviation, synonym, catalog number if known). For each requirement:
 
-```bash
-biolab inventory check requirements.json -f json
-```
+   a. Search for matching items:
+   ```bash
+   biolab inventory items --search "<term1>" -f json
+   biolab inventory items --search "<term2>" -f json
+   ```
 
-3. If every requirement is `available`, continue creating the plan or task.
-4. If any requirement is `missing_item`, `ambiguous_item`, or `insufficient_stock`, stop and report what is missing. Do not claim the experiment is executable.
-5. For missing primer stock, use the primer order workflow when appropriate. For generic reagents/consumables, tell the user the current CLI does not create generic purchase orders unless such an order endpoint exists.
-6. During execution, re-check inventory and then checkout the actual consumed stock.
+   b. For each candidate item found, check stock:
+   ```bash
+   biolab inventory summary --search "<matched_item_name>" -f json
+   ```
+
+   c. If the item is found and has stock, record the item_id, stock batch id(s), remaining quantity, and unit.
+
+3. The LLM is responsible for matching: determine whether a search result really satisfies the requirement (name similarity, category match, unit compatibility). Do not expect exact name matches — inventory names may use Chinese, abbreviations, or supplier-specific naming.
+4. If a requirement can be matched to in-stock items after thorough searching, mark it available.
+5. If a requirement cannot be found after trying all reasonable search terms, mark it missing and report it. Do not claim the experiment is executable until all requirements are resolved.
+6. For missing primer stock, use the primer order workflow when appropriate. For generic reagents/consumables, tell the user the current CLI does not create generic purchase orders unless such an order endpoint exists.
+7. During execution, re-check inventory with active search and then checkout the actual consumed stock.
 
 ## Planning vs Execution
 
 Planning phase:
 
-- Check inventory.
-- Record item candidates, stock candidates, quantities, units, and missing items in the plan.
+- Actively search inventory for each requirement.
+- Record matched item_ids, stock batch ids, quantities, units, and missing items in the plan.
 - Do not mutate inventory.
-- Do not treat `inventory check` as reservation.
+- Do not treat stock discovery as reservation.
 
 Execution phase:
 
-- Re-run `inventory check` as close as possible to physical execution.
+- Re-search inventory as close as possible to physical execution.
 - Use `checkout-item` when the item is known but no batch was chosen.
 - Use `checkout` when a specific stock batch was selected.
 - Include `experiment_ref`, `task_id`, `part_id`, and `requirement_key` on checkout whenever available.
@@ -58,33 +68,6 @@ biolab inventory checkout-item <ITEM_ID> \
   -f json
 ```
 
-## Requirement File
-
-Use this shape for `inventory check`:
-
-```json
-{
-  "requirements": [
-    {
-      "requirement_key": "pcr.polymerase",
-      "name": "Phusion High-Fidelity DNA Polymerase",
-      "quantity": 1,
-      "unit": "uL",
-      "category": "reagent"
-    },
-    {
-      "requirement_key": "pcr.forward_primer",
-      "name": "Primer F",
-      "quantity": 1,
-      "unit": "tube",
-      "category": "primer"
-    }
-  ]
-}
-```
-
-`requirement_key` must remain stable from plan creation to execution checkout.
-
 ## Ordering Rule
 
 If stock is unavailable:
@@ -100,7 +83,7 @@ Never fake an order, reservation, or stock lock in the task payload.
 When creating experiment tasks:
 
 - Include the inventory requirements in `input_data`.
-- Include the inventory check report in `input_data` or an attached plan when useful.
+- Include the active search results and stock matches in `input_data` or an attached plan when useful.
 - Do not mark the task ready for execution if required inventory is unavailable.
 
 When completing execution:

@@ -56,45 +56,48 @@ Rules:
 - Always include `experiment_ref` when there is experiment context.
 - Always include `task_id`, `part_id`, and `requirement_key` when inventory is consumed for a scheduled experiment task.
 
-## Inventory Check
+## Inventory Check (LLM-Driven Active Search)
 
-Use this before creating an executable experiment task or experiment plan:
+Do NOT use `biolab inventory check` as the primary discovery method. Its literal name matching cannot handle Chinese/English variations, abbreviations, or synonyms.
+
+Instead, the LLM must actively search for each requirement:
+
+### Step 1 — Search for items with multiple terms
 
 ```bash
-biolab inventory check requirements.json -f json
+biolab inventory items --search "<term>" -f json
 ```
 
-Supported requirement file shape:
+Try multiple search terms per requirement: Chinese name, English name, abbreviation, catalog number. The backend matches substrings, so short core terms often work best (e.g. "连接酶" for ligase, "内切酶" for endonuclease, "聚合酶" for polymerase).
 
-```json
-{
-  "requirements": [
-    {
-      "requirement_key": "pcr.dntp",
-      "name": "dNTP Mix",
-      "quantity": 10,
-      "unit": "uL",
-      "category": "reagent"
-    }
-  ]
-}
+### Step 2 — Check stock for matched items
+
+```bash
+biolab inventory summary --search "<matched_item_name>" -f json
 ```
 
-The check command is a client-side aggregate query using current backend read APIs. It is not a reservation, atomic lock, or guarantee that the stock will still exist at execution time.
+This returns current stock, batches, remaining quantities, and units per item.
 
-Interpretation:
+### Step 3 — LLM judges the match
 
-- `available`: enough matching stock currently exists.
-- `insufficient_stock`: the item exists but matching stock is too low.
-- `missing_item`: no item definition was found.
-- `ambiguous_item`: multiple exact item definitions matched; ask the user to select one.
+The LLM decides whether a search result satisfies the requirement:
+- Name similarity (Chinese ↔ English, partial match, supplier naming)
+- Category match
+- Unit compatibility (flag mismatches; do not auto-convert)
+- Stock sufficiency
 
-If unit differs, do not convert automatically. Ask the user or use the backend/source record if a conversion is explicitly available.
+### Step 4 — Report
+
+For each requirement, report: matched item, stock batch(es), remaining quantity, unit. If a requirement cannot be found after trying all reasonable search terms, mark it as missing.
+
+### Why not `biolab inventory check`
+
+The aggregate `biolab inventory check requirements.json` command uses literal name matching. It will miss items whose inventory names differ from the requirement name — for example, searching "T4 DNA Ligase" will not find "T4 DNA连接酶", and searching "XhoI" will not find "XhoI内切酶". LLM-driven search with multiple terms per requirement is the correct approach.
 
 ## Experiment Rule
 
-For planning: check inventory only. Do not checkout while merely drafting a plan.
+For planning: search inventory only. Do not checkout while merely drafting a plan.
 
-For execution: re-check inventory immediately before physical execution, then run `checkout` or `checkout-item` for each consumed requirement and record the task/part/requirement fields.
+For execution: re-search inventory immediately before physical execution, then run `checkout` or `checkout-item` for each consumed requirement and record the task/part/requirement fields.
 
 If stock is missing or insufficient, stop before creating a task marked executable. Move the missing material into the ordering workflow if the available order APIs support that material type.
