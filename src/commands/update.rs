@@ -157,7 +157,9 @@ async fn install_latest(global_skills: bool) -> anyhow::Result<()> {
     println!("Downloading {} ...", sha_name);
     let sha_bytes = download_bytes(sha_url).await?;
     let expected_sha = String::from_utf8_lossy(&sha_bytes)
-        .trim()
+        .split_whitespace()
+        .next()
+        .unwrap_or("")
         .to_ascii_lowercase();
 
     let actual_sha = {

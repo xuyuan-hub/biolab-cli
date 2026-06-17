@@ -15,6 +15,11 @@ const EXPECTED_SKILLS: &[&str] = &[
     "biolab-lab",
     "biolab-project",
     "biolab-users",
+    "biolab-evo",
+    "biolab-experiment",
+    "biolab-task",
+    "biolab-tashan",
+    "biolab-error-report",
 ];
 
 #[derive(Args)]
