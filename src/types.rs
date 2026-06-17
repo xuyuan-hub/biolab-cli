@@ -344,7 +344,7 @@ pub struct StockOutResponse {
     #[serde(default)]
     pub avg_unit_price: Option<String>,
     #[serde(default)]
-    pub details: Option<serde_json::Value>,
+    pub details: Vec<Transaction>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -358,11 +358,15 @@ pub struct Location {
     pub id: String,
     pub name: String,
     #[serde(default)]
+    pub user_id: Option<String>,
+    #[serde(default)]
     pub parent_id: Option<String>,
     #[serde(default)]
     pub path: Option<String>,
     #[serde(default)]
     pub full_path: Option<String>,
+    #[serde(default)]
+    pub created_at: Option<String>,
     #[serde(default)]
     pub children: Vec<Location>,
 }
@@ -785,6 +789,31 @@ mod tests {
         assert_eq!(tx.quantity, 5.0);
     }
 
+    #[test]
+    fn test_stock_out_response_details_as_transactions() {
+        let json = r#"{
+            "total_quantity": "2.5",
+            "total_amount": "12.00",
+            "avg_unit_price": "4.80",
+            "details": [{
+                "id": "tx-1",
+                "stock_id": "stock-1",
+                "type": "checkout",
+                "quantity": "2.5",
+                "remaining_after": "7.5",
+                "purpose": "PCR",
+                "created_at": "2026-06-17T10:00:00Z"
+            }]
+        }"#;
+        let response: StockOutResponse =
+            serde_json::from_str(json).expect("should parse stock-out transaction details");
+        assert_eq!(response.total_quantity, Some(2.5));
+        assert_eq!(response.details.len(), 1);
+        assert_eq!(response.details[0].stock_id.as_deref(), Some("stock-1"));
+        assert_eq!(response.details[0].quantity, 2.5);
+        assert_eq!(response.details[0].remaining_after, Some(7.5));
+    }
+
     // ---- Stock deserialization ----
 
     #[test]
@@ -799,6 +828,36 @@ mod tests {
         let stock: Stock =
             serde_json::from_str(json).expect("should parse stock with string remaining_quantity");
         assert_eq!(stock.remaining_quantity, Some(3.5));
+    }
+
+    // ---- Location deserialization ----
+
+    #[test]
+    fn test_location_openapi_fields() {
+        let json = r#"{
+            "id": "loc-1",
+            "name": "Freezer A",
+            "user_id": "user-1",
+            "parent_id": null,
+            "path": "/Freezer A",
+            "created_at": "2026-06-17T10:00:00Z",
+            "children": [{
+                "id": "loc-2",
+                "name": "Shelf 1",
+                "user_id": "user-1",
+                "parent_id": "loc-1",
+                "path": "/Freezer A/Shelf 1",
+                "created_at": "2026-06-17T10:01:00Z",
+                "children": []
+            }]
+        }"#;
+        let location: Location =
+            serde_json::from_str(json).expect("should parse OpenAPI location fields");
+        assert_eq!(location.user_id.as_deref(), Some("user-1"));
+        assert_eq!(location.path.as_deref(), Some("/Freezer A"));
+        assert_eq!(location.created_at.as_deref(), Some("2026-06-17T10:00:00Z"));
+        assert_eq!(location.children.len(), 1);
+        assert_eq!(location.children[0].parent_id.as_deref(), Some("loc-1"));
     }
 
     // ---- ApprovalRule deserialization ----

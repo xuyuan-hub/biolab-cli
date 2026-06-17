@@ -39,22 +39,25 @@ biolab inventory create-item item.json -f json
 biolab inventory update-item <ITEM_ID> item_update.json -f json
 biolab inventory disable-item <ITEM_ID> -f json
 biolab inventory create-stock stock.json -f json
-biolab inventory checkin <STOCK_ID> --quantity <QTY> --purpose "<WHY>" -f json
-biolab inventory checkout <STOCK_ID> --quantity <QTY> --recipient "<WHO>" --purpose "<WHY>" --experiment-ref <EXP> --task-id <TASK_ID> --part-id <PART_ID> --requirement-key <KEY> -f json
+biolab inventory checkin <STOCK_ID> --quantity <QTY> --purpose "<WHY>" --lab-id <LAB_ID> -f json
+biolab inventory checkout <STOCK_ID> --quantity <QTY> --recipient "<WHO>" --purpose "<WHY>" --experiment-ref <EXP> --task-id <TASK_ID> --part-id <PART_ID> --requirement-key <KEY> --lab-id <LAB_ID> -f json
 biolab inventory checkout-item <ITEM_ID> --quantity <QTY> --purpose "<WHY>" --experiment-ref <EXP> --task-id <TASK_ID> --part-id <PART_ID> --requirement-key <KEY> -f json
 biolab inventory adjust <STOCK_ID> --quantity -1 --type loss --reason "<REASON>" -f json
 biolab inventory transfer <STOCK_ID> --location-id <LOCATION_ID> --reason "<REASON>" -f json
-biolab inventory create-location "<NAME>" --parent-id <PARENT_ID> -f json
+biolab inventory create-location "<NAME>" --parent-id <PARENT_ID> --lab-id <LAB_ID> -f json
 ```
 
 Rules:
 
 - `checkin`, `checkout`, and `checkout-item` quantities must be positive.
+- `checkin`, `checkout`, `checkout-item`, and `create-stock` quantities are expressed in the item's `usage_unit` amount. Do not treat `quantity` as package count unless `usage_unit` equals `unit`.
+- `unit` is the storage or package unit shown on the item (for example bottle, tube, box). `usage_unit` is the actual consumption unit used by stock mutations and experiment requirements (for example uL, mg, reaction).
 - `adjust` quantity may be positive or negative, but not zero. Allowed types are `correction`, `loss`, `damage`, and `expire`.
 - Prefer `checkout-item` when an experiment specifies the item but not the exact batch; the backend performs FIFO stock-out.
 - Prefer `checkout` when a specific stock batch was selected or physically used.
 - Always include `experiment_ref` when there is experiment context.
 - Always include `task_id`, `part_id`, and `requirement_key` when inventory is consumed for a scheduled experiment task.
+- Use `--lab-id` on `checkin`, `checkout`, and `create-location` when operating in a specific lab context. `checkout-item` does not expose this header in the current OpenAPI.
 
 ## Inventory Check (LLM-Driven Active Search)
 
@@ -117,12 +120,12 @@ Use the actual matched item names from Step 1 to narrow the summary filter terms
 The LLM decides whether a search result satisfies the requirement:
 - Name similarity (Chinese ↔ English, partial match, supplier naming)
 - Category match
-- Unit compatibility (flag mismatches; do not auto-convert)
+- Unit compatibility. Compare requirements against `usage_unit` first; report `unit` as package/storage context only. Flag mismatches and do not auto-convert unless the backend item exposes an explicit compatible conversion.
 - Stock sufficiency
 
 ### Step 4 — Report
 
-For each requirement, report: matched item, stock batch(es), remaining quantity, unit. If a requirement cannot be found after trying all reasonable search terms, mark it as missing.
+For each requirement, report: matched item, stock batch(es), remaining quantity, usage_unit, and package unit. If a requirement cannot be found after trying all reasonable search terms, mark it as missing.
 
 ### Why not `biolab inventory check`
 

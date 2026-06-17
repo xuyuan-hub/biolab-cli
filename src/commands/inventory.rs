@@ -110,6 +110,8 @@ pub enum InventoryCommand {
         quantity: f64,
         #[arg(long)]
         purpose: Option<String>,
+        #[arg(long)]
+        lab_id: Option<String>,
     },
     /// Check out stock.
     Checkout {
@@ -128,6 +130,8 @@ pub enum InventoryCommand {
         part_id: Option<String>,
         #[arg(long)]
         requirement_key: Option<String>,
+        #[arg(long)]
+        lab_id: Option<String>,
     },
     /// Check out stock by item using backend FIFO.
     CheckoutItem {
@@ -172,6 +176,8 @@ pub enum InventoryCommand {
         name: String,
         #[arg(long)]
         parent_id: Option<String>,
+        #[arg(long)]
+        lab_id: Option<String>,
     },
 }
 
@@ -342,9 +348,12 @@ pub async fn run(
             id,
             quantity,
             purpose,
+            lab_id,
         } => {
             validate_positive_quantity(*quantity)?;
-            let transaction = client.checkin(id, *quantity, purpose.as_deref()).await?;
+            let transaction = client
+                .checkin(id, *quantity, purpose.as_deref(), lab_id.as_deref())
+                .await?;
             print_result(&transaction, format);
         }
         InventoryCommand::Checkout {
@@ -356,6 +365,7 @@ pub async fn run(
             task_id,
             part_id,
             requirement_key,
+            lab_id,
         } => {
             validate_positive_quantity(*quantity)?;
             let transaction = client
@@ -368,6 +378,7 @@ pub async fn run(
                     task_id.as_deref(),
                     part_id.as_deref(),
                     requirement_key.as_deref(),
+                    lab_id.as_deref(),
                 )
                 .await?;
             print_result(&transaction, format);
@@ -427,8 +438,14 @@ pub async fn run(
                 OutputFormat::Text => print_paginated_items(&locations),
             }
         }
-        InventoryCommand::CreateLocation { name, parent_id } => {
-            let location = client.create_location(name, parent_id.as_deref()).await?;
+        InventoryCommand::CreateLocation {
+            name,
+            parent_id,
+            lab_id,
+        } => {
+            let location = client
+                .create_location(name, parent_id.as_deref(), lab_id.as_deref())
+                .await?;
             print_result(&location, format);
         }
     }
@@ -839,6 +856,26 @@ fn validate_adjustment_type(adjustment_type: &str) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: TestCommand,
+    }
+
+    #[derive(Subcommand)]
+    enum TestCommand {
+        Inventory(InventoryArgs),
+    }
+
+    fn parse_inventory(args: &[&str]) -> InventoryArgs {
+        let cli = TestCli::try_parse_from(std::iter::once("biolab").chain(args.iter().copied()))
+            .expect("inventory command should parse");
+        match cli.command {
+            TestCommand::Inventory(args) => args,
+        }
+    }
 
     #[test]
     fn accepts_positive_finite_quantity() {
@@ -888,5 +925,75 @@ mod tests {
         assert_eq!(req.name, "dNTP Mix");
         assert_eq!(req.quantity, 10.0);
         assert_eq!(req.unit.as_deref(), Some("uL"));
+    }
+
+    #[test]
+    fn parses_checkin_with_lab_id() {
+        let args = parse_inventory(&[
+            "inventory",
+            "checkin",
+            "stock-1",
+            "--quantity",
+            "2",
+            "--lab-id",
+            "lab-1",
+        ]);
+        match args.command {
+            InventoryCommand::Checkin {
+                id,
+                quantity,
+                lab_id,
+                ..
+            } => {
+                assert_eq!(id, "stock-1");
+                assert_eq!(quantity, 2.0);
+                assert_eq!(lab_id.as_deref(), Some("lab-1"));
+            }
+            _ => panic!("expected checkin command"),
+        }
+    }
+
+    #[test]
+    fn parses_checkout_with_lab_id() {
+        let args = parse_inventory(&[
+            "inventory",
+            "checkout",
+            "stock-1",
+            "--quantity",
+            "1",
+            "--lab-id",
+            "lab-1",
+        ]);
+        match args.command {
+            InventoryCommand::Checkout {
+                id,
+                quantity,
+                lab_id,
+                ..
+            } => {
+                assert_eq!(id, "stock-1");
+                assert_eq!(quantity, 1.0);
+                assert_eq!(lab_id.as_deref(), Some("lab-1"));
+            }
+            _ => panic!("expected checkout command"),
+        }
+    }
+
+    #[test]
+    fn parses_create_location_with_lab_id() {
+        let args = parse_inventory(&[
+            "inventory",
+            "create-location",
+            "Shelf A",
+            "--lab-id",
+            "lab-1",
+        ]);
+        match args.command {
+            InventoryCommand::CreateLocation { name, lab_id, .. } => {
+                assert_eq!(name, "Shelf A");
+                assert_eq!(lab_id.as_deref(), Some("lab-1"));
+            }
+            _ => panic!("expected create-location command"),
+        }
     }
 }

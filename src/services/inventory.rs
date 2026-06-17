@@ -173,11 +173,17 @@ impl BiolabClient {
         stock_id: &str,
         quantity: f64,
         purpose: Option<&str>,
+        lab_id: Option<&str>,
     ) -> Result<Transaction, BiolabError> {
-        let resp: serde_json::Value = self
-            .http
-            .post(&checkin_path(stock_id), &checkin_body(quantity, purpose))
-            .await?;
+        let path = checkin_path(stock_id);
+        let body = checkin_body(quantity, purpose);
+        let resp: serde_json::Value = if let Some(lab_id) = lab_id {
+            self.http
+                .post_with_headers(&path, &body, &[("X-Current-Lab", lab_id)])
+                .await?
+        } else {
+            self.http.post(&path, &body).await?
+        };
         extract_object(resp)
     }
 
@@ -191,22 +197,25 @@ impl BiolabClient {
         task_id: Option<&str>,
         part_id: Option<&str>,
         requirement_key: Option<&str>,
+        lab_id: Option<&str>,
     ) -> Result<Transaction, BiolabError> {
-        let resp: serde_json::Value = self
-            .http
-            .post(
-                &checkout_path(stock_id),
-                &checkout_body(
-                    quantity,
-                    recipient,
-                    purpose,
-                    experiment_ref,
-                    task_id,
-                    part_id,
-                    requirement_key,
-                ),
-            )
-            .await?;
+        let path = checkout_path(stock_id);
+        let body = checkout_body(
+            quantity,
+            recipient,
+            purpose,
+            experiment_ref,
+            task_id,
+            part_id,
+            requirement_key,
+        );
+        let resp: serde_json::Value = if let Some(lab_id) = lab_id {
+            self.http
+                .post_with_headers(&path, &body, &[("X-Current-Lab", lab_id)])
+                .await?
+        } else {
+            self.http.post(&path, &body).await?
+        };
         extract_object(resp)
     }
 
@@ -281,9 +290,16 @@ impl BiolabClient {
         &self,
         name: &str,
         parent_id: Option<&str>,
+        lab_id: Option<&str>,
     ) -> Result<Location, BiolabError> {
         let data = create_location_body(name, parent_id);
-        let resp: serde_json::Value = self.http.post("/inventory/locations", &data).await?;
+        let resp: serde_json::Value = if let Some(lab_id) = lab_id {
+            self.http
+                .post_with_headers("/inventory/locations", &data, &[("X-Current-Lab", lab_id)])
+                .await?
+        } else {
+            self.http.post("/inventory/locations", &data).await?
+        };
         extract_object(resp)
     }
 }

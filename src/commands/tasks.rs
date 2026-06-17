@@ -243,9 +243,14 @@ pub async fn run(
         }
         TasksCommand::Workflow { id } => {
             let workflow = client.get_task_workflow(id).await?;
-            match format {
-                OutputFormat::Json => print_result(&workflow, format),
-                OutputFormat::Text => print_workflow_detail(&workflow),
+            match client.list_lab_task_results(id, None).await {
+                Ok(results) if !results.items.is_empty() => {
+                    print_workflow_results(&client, &workflow, &results, None, format).await?;
+                }
+                _ => match format {
+                    OutputFormat::Json => print_result(&workflow, format),
+                    OutputFormat::Text => print_workflow_detail(&workflow),
+                },
             }
         }
         TasksCommand::Update { id, data } => {
@@ -1118,6 +1123,21 @@ fn print_workflow_results_text(view: &WorkflowResultsView) {
                         result.comment.as_deref().filter(|value| !value.is_empty())
                     {
                         println!("      comment: {comment}");
+                    }
+                    if let Some(output) = result
+                        .output_data
+                        .as_ref()
+                        .and_then(|value| value.as_object())
+                        .filter(|obj| !obj.is_empty())
+                    {
+                        println!("      output:");
+                        for (key, value) in output {
+                            let display = match value {
+                                serde_json::Value::String(s) => s.clone(),
+                                other => other.to_string(),
+                            };
+                            println!("        {key}: {display}");
+                        }
                     }
                 }
             }
