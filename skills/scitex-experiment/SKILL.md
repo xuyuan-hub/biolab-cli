@@ -1,19 +1,19 @@
 ---
-name: biolab-experiment
-description: "Use when planning, creating, arranging, or executing Biolab experiments where reagents, consumables, primers, samples, or other inventory may be required. Enforces inventory checks before planning/tasks, ordering flow for missing stock, and task-linked checkout during execution."
+name: scitex-experiment
+description: "Use when planning, creating, arranging, or executing Scientex experiments where reagents, consumables, primers, samples, or other inventory may be required. Enforces inventory checks before planning/tasks, ordering flow for missing stock, and task-linked checkout during execution."
 metadata:
   requires:
-    bins: ["biolab"]
-  cliHelp: "biolab inventory --help; biolab tasks --help"
+    bins: ["scitex"]
+  cliHelp: "scitex inventory --help; scitex tasks --help"
 ---
 
-# Biolab Experiment
+# Scientex Experiment
 
 Before API calls, read:
 
-- `../biolab-shared/SKILL.md`
-- `../biolab-inventory/SKILL.md`
-- `../biolab-task/SKILL.md` when creating or executing tasks
+- `../scitex-shared/SKILL.md`
+- `../scitex-inventory/SKILL.md`
+- `../scitex-task/SKILL.md` when creating or executing tasks
 
 ## Core Workflow
 
@@ -22,13 +22,13 @@ Before API calls, read:
 
    a. Search for matching items:
    ```bash
-   biolab inventory items --search "<term1>" -f json
-   biolab inventory items --search "<term2>" -f json
+   scitex inventory items --search "<term1>" -f json
+   scitex inventory items --search "<term2>" -f json
    ```
 
    b. For each candidate item found, check stock:
    ```bash
-   biolab inventory summary --search "<matched_item_name>" -f json
+   scitex inventory summary --search "<matched_item_name>" -f json
    ```
 
    c. If the item is found and has stock, record the item_id, stock batch id(s), remaining quantity, and unit.
@@ -58,7 +58,7 @@ Execution phase:
 Example:
 
 ```bash
-biolab inventory checkout-item <ITEM_ID> \
+scitex inventory checkout-item <ITEM_ID> \
   --quantity 10 \
   --purpose "PCR setup" \
   --experiment-ref EXP-20260615-001 \
@@ -72,7 +72,7 @@ biolab inventory checkout-item <ITEM_ID> \
 
 If stock is unavailable:
 
-- Primer synthesis: use the Biolab orders skill/commands when the sequence and order information are available.
+- Primer synthesis: use the Scientex orders skill/commands when the sequence and order information are available.
 - Sequencing services: use sequencing order flow when the experiment requires sequencing service, not inventory checkout.
 - Generic reagent or consumable: report the missing stock and ask the user how to order or restock unless a generic purchase endpoint exists in OpenAPI.
 

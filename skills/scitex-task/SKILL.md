@@ -1,15 +1,15 @@
 ---
-name: biolab-task
-description: "Use when the user asks in natural language to do, implement, run, arrange, schedule, or execute a Biolab task. First check available task types, then create either a single-stage task or a multi-stage workflow task once the required inputs are clear."
+name: scitex-task
+description: "Use when the user asks in natural language to do, implement, run, arrange, schedule, or execute a Scientex task. First check available task types, then create either a single-stage task or a multi-stage workflow task once the required inputs are clear."
 metadata:
   requires:
-    bins: ["biolab"]
-  cliHelp: "biolab tasks --help"
+    bins: ["scitex"]
+  cliHelp: "scitex tasks --help"
 ---
 
-# Biolab Task Natural-Language Workflow
+# Scientex Task Natural-Language Workflow
 
-Use this skill when the user asks to create, arrange, execute, or inspect a Biolab task in the task scheduling system.
+Use this skill when the user asks to create, arrange, execute, or inspect a Scientex task in the task scheduling system.
 
 Examples:
 
@@ -20,31 +20,31 @@ Examples:
 - `看看有没有任务类型适合做这个`
 - `create a workflow task for compute first, then staff review`
 
-Do not use this skill for generic coding requests unless the user clearly means a Biolab task in the task scheduling system.
+Do not use this skill for generic coding requests unless the user clearly means a Scientex task in the task scheduling system.
 
-Before API calls, read `../biolab-shared/SKILL.md`.
+Before API calls, read `../scitex-shared/SKILL.md`.
 
 ## Core Rule
 
 Never assume the task type exists. Always check available task types first:
 
 ```bash
-biolab tasks types -f json
+scitex tasks types -f json
 ```
 
 Use query options when the request needs narrowing, similar to Tashan germplasm queries:
 
 ```bash
-biolab tasks types --search <keyword> --filters '<json_filter_array>' -f json
+scitex tasks types --search <keyword> --filters '<json_filter_array>' -f json
 ```
 
 ## Inventory Gate For Experiment Tasks
 
 When the task represents an experiment, lab execution, sample processing, PCR, sequencing prep, reagent use, consumable use, primer use, or any workflow that may consume inventory:
 
-1. Read `../biolab-inventory/SKILL.md`.
+1. Read `../scitex-inventory/SKILL.md`.
 2. Extract inventory requirements and assign stable `requirement_key` values.
-3. **Actively search** for each requirement — do NOT rely on `biolab inventory check`. Use `biolab inventory items --search` with multiple search terms per requirement, then `biolab inventory summary --search` to check stock. The LLM is responsible for matching search results to requirements.
+3. **Actively search** for each requirement — do NOT rely on `scitex inventory check`. Use `scitex inventory items --search` with multiple search terms per requirement, then `scitex inventory summary --search` to check stock. The LLM is responsible for matching search results to requirements.
 4. If any requirement cannot be matched to in-stock items after thorough searching, do not create an executable task. Report the missing inventory and move to ordering/restock discussion.
 5. Do not checkout inventory during task planning or task creation.
 6. During actual execution, re-search inventory and use `checkout` or `checkout-item` with `task_id`, `part_id`, and `requirement_key`.
@@ -101,13 +101,13 @@ Use a workflow task when any of these are true:
 ### Single-stage command
 
 ```bash
-biolab tasks create <json_file>
+scitex tasks create <json_file>
 ```
 
 ### Workflow command
 
 ```bash
-biolab tasks create-workflow <json_file>
+scitex tasks create-workflow <json_file>
 ```
 
 ## Creating A Single-Stage Task
@@ -217,7 +217,7 @@ When a downstream stage's required input comes from an upstream compute stage's 
 
 Two approaches:
 
-1. **Two-step (reliable, preferred)**: Create the upstream stage(s) as a task or workflow first. After they complete, download the results (`biolab tasks get <id> -f json` gives signed download URLs), then create the downstream stages with the concrete output data.
+1. **Two-step (reliable, preferred)**: Create the upstream stage(s) as a task or workflow first. After they complete, download the results (`scitex tasks get <id> -f json` gives signed download URLs), then create the downstream stages with the concrete output data.
 2. **When all inputs are known upfront**: If every stage's required inputs are available at creation time (no data dependency between stages), create the full workflow in one shot.
 
 Do not leave a required field empty or use a placeholder hoping the backend will fill it — the API validates all parts at submission time.
@@ -251,7 +251,7 @@ For clearly requested, low-risk task creation with all inputs present, proceed a
 Use:
 
 ```bash
-biolab tasks workflow <TASK_ID> -f json
+scitex tasks workflow <TASK_ID> -f json
 ```
 
 This is the preferred detail view for multi-stage tasks because it includes:
@@ -261,14 +261,14 @@ This is the preferred detail view for multi-stage tasks because it includes:
 - dependencies
 - assignments
 
-Do not rely on `biolab tasks get` alone when the user wants workflow structure.
+Do not rely on `scitex tasks get` alone when the user wants workflow structure.
 
 ## Reading Results
 
 Use:
 
 ```bash
-biolab tasks results <TASK_ID> -f json
+scitex tasks results <TASK_ID> -f json
 ```
 
 Behavior:
@@ -292,11 +292,11 @@ User: `帮我建一个样品 QC 任务`
 
 Workflow:
 
-1. Run `biolab tasks types -f json`.
+1. Run `scitex tasks types -f json`.
 2. Match the best single task type.
 3. Inspect required fields such as `sample_ids`.
 4. Ask for missing inputs.
-5. Create with `biolab tasks create`.
+5. Create with `scitex tasks create`.
 
 ### Multi-stage workflow task
 
@@ -304,11 +304,11 @@ User: `帮我建一个先算 Tm 再做人工 QC 的任务`
 
 Workflow:
 
-1. Run `biolab tasks types -f json`.
+1. Run `scitex tasks types -f json`.
 2. Match one compute task type for Tm and one staff task type for QC.
 3. Collect the sequence, sample identifiers, and assignee if needed.
 4. Build a workflow payload with two parts and one dependency.
-5. Create with `biolab tasks create-workflow`.
+5. Create with `scitex tasks create-workflow`.
 
 ### No match
 
@@ -325,4 +325,4 @@ After task creation, report:
 - status
 - task type for single-stage tasks, or stage summary for workflow tasks
 
-Use `biolab tasks get <TASK_ID> -f json` only if the create response is missing important fields.
+Use `scitex tasks get <TASK_ID> -f json` only if the create response is missing important fields.

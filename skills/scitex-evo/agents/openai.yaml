@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scientex Evo"
+  short_description: "Run Scientex evo compute tasks."
+  default_prompt: "Use Scientex evo task workflows for Tm, codon optimization, NGS primer design, barcode checks, and EXP2 primer design."

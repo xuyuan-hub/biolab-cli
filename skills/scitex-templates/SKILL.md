@@ -1,27 +1,27 @@
 ---
-name: biolab-templates
+name: scitex-templates
 version: 0.1.0
-description: "Use when listing, creating, updating, deleting, selecting, or applying Biolab order-info templates for primer synthesis or sequencing orders."
+description: "Use when listing, creating, updating, deleting, selecting, or applying Scientex order-info templates for primer synthesis or sequencing orders."
 metadata:
   requires:
-    bins: ["biolab"]
-  cliHelp: "biolab templates --help"
+    bins: ["scitex"]
+  cliHelp: "scitex templates --help"
 ---
 
-# Biolab Templates
+# Scientex Templates
 
-**Before starting, read `../biolab-shared/SKILL.md` for auth, safety, and OpenAPI rules.**
+**Before starting, read `../scitex-shared/SKILL.md` for auth, safety, and OpenAPI rules.**
 
 ## Commands
 
 ```bash
-biolab templates list -f json
-biolab templates get <TEMPLATE_ID> -f json
-biolab templates get-default primer_synthesis -f json
-biolab templates create template.json -f json
-biolab templates update <TEMPLATE_ID> template.json -f json
-biolab templates delete <TEMPLATE_ID> -f json
-biolab templates set-default <TEMPLATE_ID> -f json
+scitex templates list -f json
+scitex templates get <TEMPLATE_ID> -f json
+scitex templates get-default primer_synthesis -f json
+scitex templates create template.json -f json
+scitex templates update <TEMPLATE_ID> template.json -f json
+scitex templates delete <TEMPLATE_ID> -f json
+scitex templates set-default <TEMPLATE_ID> -f json
 ```
 
 ## Schema
@@ -40,13 +40,13 @@ Contact fields such as `customer_name`, `customer_phone`, and `customer_email` b
 
 ## First-Time Order Template Workflow
 
-1. Run `biolab templates get-default <ORDER_TYPE> -f json`.
-2. If no default exists, run `biolab templates list -f json`.
+1. Run `scitex templates get-default <ORDER_TYPE> -f json`.
+2. If no default exists, run `scitex templates list -f json`.
 3. If no suitable template exists, ask the user for template fields.
 4. Create the template JSON from `OrderInfoTemplateCreate`.
 5. Confirm with the user.
-6. Run `biolab templates create template.json -f json`.
-7. If needed, run `biolab templates set-default <TEMPLATE_ID> -f json`.
+6. Run `scitex templates create template.json -f json`.
+7. If needed, run `scitex templates set-default <TEMPLATE_ID> -f json`.
 
 ## Rules
 

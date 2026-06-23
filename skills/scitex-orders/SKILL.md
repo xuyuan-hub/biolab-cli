@@ -1,32 +1,32 @@
 ---
-name: biolab-orders
+name: scitex-orders
 version: 0.1.0
-description: "Use when creating, listing, inspecting, updating, downloading, uploading, approving, or placing Biolab primer synthesis or sequencing orders, including primer purchase workflows."
+description: "Use when creating, listing, inspecting, updating, downloading, uploading, approving, or placing Scientex primer synthesis or sequencing orders, including primer purchase workflows."
 metadata:
   requires:
-    bins: ["biolab"]
-  cliHelp: "biolab orders --help"
+    bins: ["scitex"]
+  cliHelp: "scitex orders --help"
 ---
 
-# Biolab Orders
+# Scientex Orders
 
-**Before starting, read `../biolab-shared/SKILL.md` for auth, safety, and OpenAPI rules.**
+**Before starting, read `../scitex-shared/SKILL.md` for auth, safety, and OpenAPI rules.**
 
-Use `../biolab-templates/SKILL.md` whenever an order should use saved order-info defaults.
+Use `../scitex-templates/SKILL.md` whenever an order should use saved order-info defaults.
 
 ## Commands
 
 ```bash
-biolab orders list -f json
-biolab orders get <ORDER_ID> -f json
-biolab orders create-primer order.json -f json
-biolab orders create-sequencing order.json -f json
-biolab orders update <ORDER_ID> '{"status":"received"}' -f json
-biolab orders download <ORDER_ID> order.xlsx
-biolab orders download-primer-template primer_template.xlsx
-biolab orders download-sequencing-template sequencing_template.xlsx
-biolab orders upload-primer-excel primer.xlsx -f json
-biolab orders upload-sequencing-excel sequencing.xlsx -f json
+scitex orders list -f json
+scitex orders get <ORDER_ID> -f json
+scitex orders create-primer order.json -f json
+scitex orders create-sequencing order.json -f json
+scitex orders update <ORDER_ID> '{"status":"received"}' -f json
+scitex orders download <ORDER_ID> order.xlsx
+scitex orders download-primer-template primer_template.xlsx
+scitex orders download-sequencing-template sequencing_template.xlsx
+scitex orders upload-primer-excel primer.xlsx -f json
+scitex orders upload-sequencing-excel sequencing.xlsx -f json
 ```
 
 ## Schema
@@ -53,9 +53,9 @@ Ask the user how they want to provide primer information: Excel upload or manual
 
 **Path A — Excel upload**
 
-1. Run `biolab orders download-primer-template primer_template.xlsx` to get the standard primer ordering spreadsheet.
+1. Run `scitex orders download-primer-template primer_template.xlsx` to get the standard primer ordering spreadsheet.
 2. User fills out the template or their own Excel file.
-3. Run `biolab orders upload-primer-excel <file.xlsx> -f json` to parse and validate.
+3. Run `scitex orders upload-primer-excel <file.xlsx> -f json` to parse and validate.
 4. Review the parsed items with the user, then proceed to Step 2.
 
 **Path B — Provide primer fields for manual input**
@@ -84,8 +84,8 @@ Only `primer_name` and `sequence` are required. All other fields are optional.
 
 ### Step 2: Confirm order-level fields
 
-1. Read the default `primer_synthesis` template through `biolab-templates`.
-2. Confirm contact fields, usually from `biolab me -f json`.
+1. Read the default `primer_synthesis` template through `scitex-templates`.
+2. Confirm contact fields, usually from `scitex me -f json`.
 3. Confirm supplier (`sangon` or `biosune`).
 4. Preserve order-level `notes` from the confirmed template unless the user overrides.
 
@@ -120,7 +120,7 @@ Only `primer_name` and `sequence` are required. All other fields are optional.
 
 1. Build the complete order JSON combining: order-level fields + primer items.
 2. Show the final summary to the user and ask for explicit confirmation.
-3. Run `biolab orders create-primer order.json -f json`.
+3. Run `scitex orders create-primer order.json -f json`.
 
 ## Rules
 

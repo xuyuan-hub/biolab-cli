@@ -1,31 +1,31 @@
 ---
-name: biolab-inventory
-description: "Use when listing, checking, creating, adjusting, transferring, or consuming Biolab generic inventory: item definitions, stock batches, locations, stock transactions, experiment inventory checks, checkin, checkout, FIFO checkout by item, and task-linked inventory usage."
+name: scitex-inventory
+description: "Use when listing, checking, creating, adjusting, transferring, or consuming Scientex generic inventory: item definitions, stock batches, locations, stock transactions, experiment inventory checks, checkin, checkout, FIFO checkout by item, and task-linked inventory usage."
 metadata:
   requires:
-    bins: ["biolab"]
-  cliHelp: "biolab inventory --help"
+    bins: ["scitex"]
+  cliHelp: "scitex inventory --help"
 ---
 
-# Biolab Inventory
+# Scientex Inventory
 
-Before starting, read `../biolab-shared/SKILL.md` for auth, safety, and OpenAPI rules.
+Before starting, read `../scitex-shared/SKILL.md` for auth, safety, and OpenAPI rules.
 
 Use this skill for generic inventory, not only primer stock. The current CLI supports backend OpenAPI inventory endpoints that already exist; do not invent reservation, atomic lock, or purchase-order commands.
 
 ## Read Commands
 
 ```bash
-biolab inventory items --search <NAME> --category <CATEGORY> --supplier <SUPPLIER> -f json
-biolab inventory item <ITEM_ID> -f json
-biolab inventory list --name <NAME> --location-id <LOCATION_ID> --low-stock -f json
-biolab inventory list --primer-name <OLD_PRIMER_NAME> -f json
-biolab inventory get <STOCK_ID> -f json
-biolab inventory summary --search <NAME> --category <CATEGORY> -f json
-biolab inventory transactions <STOCK_ID> -f json
-biolab inventory transactions-all --type checkout --item-id <ITEM_ID> --search <NAME> -f json
-biolab inventory locations -f json
-biolab inventory preferences --workflow-type <TYPE> -f json
+scitex inventory items --search <NAME> --category <CATEGORY> --supplier <SUPPLIER> -f json
+scitex inventory item <ITEM_ID> -f json
+scitex inventory list --name <NAME> --location-id <LOCATION_ID> --low-stock -f json
+scitex inventory list --primer-name <OLD_PRIMER_NAME> -f json
+scitex inventory get <STOCK_ID> -f json
+scitex inventory summary --search <NAME> --category <CATEGORY> -f json
+scitex inventory transactions <STOCK_ID> -f json
+scitex inventory transactions-all --type checkout --item-id <ITEM_ID> --search <NAME> -f json
+scitex inventory locations -f json
+scitex inventory preferences --workflow-type <TYPE> -f json
 ```
 
 `--primer-name` is only a compatibility alias for old primer workflows. Prefer `--name` for generic inventory.
@@ -35,16 +35,16 @@ biolab inventory preferences --workflow-type <TYPE> -f json
 Confirm with the user before mutating inventory unless the user explicitly asked to execute the mutation.
 
 ```bash
-biolab inventory create-item item.json -f json
-biolab inventory update-item <ITEM_ID> item_update.json -f json
-biolab inventory disable-item <ITEM_ID> -f json
-biolab inventory create-stock stock.json -f json
-biolab inventory checkin <STOCK_ID> --quantity <QTY> --purpose "<WHY>" --lab-id <LAB_ID> -f json
-biolab inventory checkout <STOCK_ID> --quantity <QTY> --recipient "<WHO>" --purpose "<WHY>" --experiment-ref <EXP> --task-id <TASK_ID> --part-id <PART_ID> --requirement-key <KEY> --lab-id <LAB_ID> -f json
-biolab inventory checkout-item <ITEM_ID> --quantity <QTY> --purpose "<WHY>" --experiment-ref <EXP> --task-id <TASK_ID> --part-id <PART_ID> --requirement-key <KEY> -f json
-biolab inventory adjust <STOCK_ID> --quantity -1 --type loss --reason "<REASON>" -f json
-biolab inventory transfer <STOCK_ID> --location-id <LOCATION_ID> --reason "<REASON>" -f json
-biolab inventory create-location "<NAME>" --parent-id <PARENT_ID> --lab-id <LAB_ID> -f json
+scitex inventory create-item item.json -f json
+scitex inventory update-item <ITEM_ID> item_update.json -f json
+scitex inventory disable-item <ITEM_ID> -f json
+scitex inventory create-stock stock.json -f json
+scitex inventory checkin <STOCK_ID> --quantity <QTY> --purpose "<WHY>" --lab-id <LAB_ID> -f json
+scitex inventory checkout <STOCK_ID> --quantity <QTY> --recipient "<WHO>" --purpose "<WHY>" --experiment-ref <EXP> --task-id <TASK_ID> --part-id <PART_ID> --requirement-key <KEY> --lab-id <LAB_ID> -f json
+scitex inventory checkout-item <ITEM_ID> --quantity <QTY> --purpose "<WHY>" --experiment-ref <EXP> --task-id <TASK_ID> --part-id <PART_ID> --requirement-key <KEY> -f json
+scitex inventory adjust <STOCK_ID> --quantity -1 --type loss --reason "<REASON>" -f json
+scitex inventory transfer <STOCK_ID> --location-id <LOCATION_ID> --reason "<REASON>" -f json
+scitex inventory create-location "<NAME>" --parent-id <PARENT_ID> --lab-id <LAB_ID> -f json
 ```
 
 Rules:
@@ -61,7 +61,7 @@ Rules:
 
 ## Inventory Check (LLM-Driven Active Search)
 
-Do NOT use `biolab inventory check` as the primary discovery method. Its literal name matching cannot handle Chinese/English variations, abbreviations, or synonyms.
+Do NOT use `scitex inventory check` as the primary discovery method. Its literal name matching cannot handle Chinese/English variations, abbreviations, or synonyms.
 
 Instead, the LLM must actively search for all requirements in bulk using the `--filters` parameter with `like` operator and `or` combine logic. This replaces many individual `--search` calls with 1-2 queries.
 
@@ -86,7 +86,7 @@ Instead, the LLM must actively search for all requirements in bulk using the `--
 Build a single filter array with one entry per search term, all combined with `or`:
 
 ```bash
-biolab inventory items --filters '[
+scitex inventory items --filters '[
   {"field":"name","operator":"like","value":"%连接酶%","combine":"or"},
   {"field":"name","operator":"like","value":"%EcoRI%","combine":"or"},
   {"field":"name","operator":"like","value":"%内切酶%","combine":"or"},
@@ -105,7 +105,7 @@ Cover each requirement with multiple search terms (Chinese, English, abbreviatio
 Use the same OR-combined filter pattern to get stock summaries for every matched item at once:
 
 ```bash
-biolab inventory summary --filters '[
+scitex inventory summary --filters '[
   {"field":"name","operator":"like","value":"%连接酶%","combine":"or"},
   {"field":"name","operator":"like","value":"%XhoI%","combine":"or"},
   {"field":"name","operator":"like","value":"%高保真%","combine":"or"},
@@ -127,9 +127,9 @@ The LLM decides whether a search result satisfies the requirement:
 
 For each requirement, report: matched item, stock batch(es), remaining quantity, usage_unit, and package unit. If a requirement cannot be found after trying all reasonable search terms, mark it as missing.
 
-### Why not `biolab inventory check`
+### Why not `scitex inventory check`
 
-The aggregate `biolab inventory check requirements.json` command uses literal name matching. It will miss items whose inventory names differ from the requirement name — for example, searching "T4 DNA Ligase" will not find "T4 DNA连接酶", and searching "XhoI" will not find "XhoI内切酶". LLM-driven bulk search with `like` + `or` is the correct approach.
+The aggregate `scitex inventory check requirements.json` command uses literal name matching. It will miss items whose inventory names differ from the requirement name — for example, searching "T4 DNA Ligase" will not find "T4 DNA连接酶", and searching "XhoI" will not find "XhoI内切酶". LLM-driven bulk search with `like` + `or` is the correct approach.
 
 ## Experiment Rule
 

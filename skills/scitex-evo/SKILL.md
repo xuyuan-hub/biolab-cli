@@ -1,18 +1,18 @@
 ---
-name: biolab-evo
-description: "Use when operating Biolab evo compute TaskTypes for molecular design workflows: Tm calculation, codon optimization, NGS primer design/verification, barcode checks, complete primer assembly, correspondence files, EXP2 BsaI Golden Gate primer/library design, and multi-stage evo workflows that chain compute TaskTypes with dependencies."
+name: scitex-evo
+description: "Use when operating Scientex evo compute TaskTypes for molecular design workflows: Tm calculation, codon optimization, NGS primer design/verification, barcode checks, complete primer assembly, correspondence files, EXP2 BsaI Golden Gate primer/library design, and multi-stage evo workflows that chain compute TaskTypes with dependencies."
 ---
 
-# Biolab Evo Workflows
+# Scientex Evo Workflows
 
-Use this skill for evo compute tasks in the Biolab task scheduling system. Before API calls, read `../biolab-shared/SKILL.md`. For generic non-evo task routing, use `../biolab-task/SKILL.md`.
+Use this skill for evo compute tasks in the Scientex task scheduling system. Before API calls, read `../scitex-shared/SKILL.md`. For generic non-evo task routing, use `../scitex-task/SKILL.md`.
 
 ## Core Rule
 
 Always query the live task type before creating a task:
 
 ```bash
-biolab tasks types --search <keyword> -f json
+scitex tasks types --search <keyword> -f json
 ```
 
 Match by `key`, `display_name`, `description`, and `input_schema`. Prefer enabled compute TaskTypes. Do not hardcode stale TaskType IDs if a live search can find the type.
@@ -32,7 +32,7 @@ Match by `key`, `display_name`, `description`, and `input_schema`. Prefer enable
 
 ## Creating Tasks
 
-Use `biolab tasks create <json_file> -f json` for JSON-only tasks.
+Use `scitex tasks create <json_file> -f json` for JSON-only tasks.
 
 The payload should follow the live `input_schema`:
 
@@ -49,12 +49,12 @@ Do not include `lab_id`; the CLI uses the current lab unless `--lab-id` is expli
 
 ## Evo Multi-stage Workflows
 
-Use `../biolab-task/SKILL.md` plus this skill when the user asks to chain evo compute steps, such as "calculate Tm first, then design an NGS primer after that completes".
+Use `../scitex-task/SKILL.md` plus this skill when the user asks to chain evo compute steps, such as "calculate Tm first, then design an NGS primer after that completes".
 
 Rules:
 
-- Query live TaskTypes for every stage, for example `biolab tasks types --search tm -f json` and `biolab tasks types --search ngs -f json`.
-- Use `biolab tasks create-workflow <json_file> -f json`.
+- Query live TaskTypes for every stage, for example `scitex tasks types --search tm -f json` and `scitex tasks types --search ngs -f json`.
+- Use `scitex tasks create-workflow <json_file> -f json`.
 - Put `task_type_id` on each `parts[*]`; do not put a root-level `task_type_id` on workflow payloads.
 - Give each stage a stable `client_key`.
 - Add `dependencies` with `condition_type: "completed"` when a later stage should unlock only after an earlier stage completes.
@@ -97,7 +97,7 @@ Example: compute primer Tm, then unlock NGS primer design:
 After creation, inspect progression with:
 
 ```bash
-biolab tasks workflow <task_id> -f json
+scitex tasks workflow <task_id> -f json
 ```
 
 Expected compute workflow progression: dependent stages may start as `LOCKED`, become `READY` after prerequisites complete, then run automatically. Report per-stage status and `output_data.exit_code`; the root workflow status may lag behind completed compute stages.
@@ -116,7 +116,7 @@ For TaskTypes with file fields, the `input_schema` marks them as:
 Create the task with multipart input:
 
 ```bash
-biolab tasks create task.json --file-field plasmid=path/to/file.dna -f json
+scitex tasks create task.json --file-field plasmid=path/to/file.dna -f json
 ```
 
 Rules:
@@ -127,7 +127,7 @@ Rules:
 - If a task already exists and a file field must be uploaded separately, use:
 
 ```bash
-biolab tasks upload-field <task_id> <file_path> <field_key> -f json
+scitex tasks upload-field <task_id> <file_path> <field_key> -f json
 ```
 
 ## EXP2 Primer Design
@@ -135,7 +135,7 @@ biolab tasks upload-field <task_id> <file_path> <field_key> -f json
 For `evo-design-exp2-primers`, first search:
 
 ```bash
-biolab tasks types --search exp2 -f json
+scitex tasks types --search exp2 -f json
 ```
 
 Required inputs normally include:
@@ -170,7 +170,7 @@ Example payload:
 Create it:
 
 ```bash
-biolab tasks create task.json --file-field plasmid=data/evo/Y70001_CasY7_plasmid.dna -f json
+scitex tasks create task.json --file-field plasmid=data/evo/Y70001_CasY7_plasmid.dna -f json
 ```
 
 This is a GPU/long-running task. Confirm before starting if the user did not clearly ask to submit it.
@@ -180,7 +180,7 @@ This is a GPU/long-running task. Confirm before starting if the user did not cle
 Check status:
 
 ```bash
-biolab tasks get <task_id> -f json
+scitex tasks get <task_id> -f json
 ```
 
 If `status` is `completed` and `output_data.exit_code` is `0`, download files from `output_data.files[*].download_url`. Preserve filenames. Important EXP2 outputs often include:
