@@ -1,10 +1,10 @@
-﻿# CLAUDE.md
+# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with this repository.
 
 ## Project Overview
 
-**biolab-cli** — A Rust CLI client for the Biolab lab management system (primer synthesis + sequencing orders, inventory, lab administration).
+**scitex-cli** — A Rust CLI client for the Scientex lab management system (primer synthesis + sequencing orders, inventory, lab administration).
 
 The system communicates with a FastAPI backend at `http://8.136.56.203/api/v1` using Feishu OAuth for authentication.
 
@@ -15,25 +15,25 @@ The system communicates with a FastAPI backend at `http://8.136.56.203/api/v1` u
 cargo build --release
 
 # Run
-./target/release/biolab <cmd>    # release binary
+./target/release/scitex <cmd>    # release binary
 
 # Help
-biolab --help
-biolab orders --help
-biolab inventory --help
+scitex --help
+scitex orders --help
+scitex inventory --help
 
 # Install AI agent skills for this project
-biolab skills install
-biolab skills check -f json
+scitex skills install
+scitex skills check -f json
 
 # Login (Feishu OAuth)
-biolab login
-biolab status
-biolab logout
+scitex login
+scitex status
+scitex logout
 
 # Output in JSON (for machine parsing)
-biolab me -f json
-biolab orders list -f json
+scitex me -f json
+scitex orders list -f json
 ```
 
 ## Architecture
@@ -41,13 +41,13 @@ biolab orders list -f json
 ### Source Layout
 
 ```
-Cargo.toml          # Rust project, binary: biolab, lib: biolab
+Cargo.toml          # Rust project, binary: scitex, lib: scitex_cli
 src/
 ├── main.rs         # Thin CLI entry — imports from lib crate, clap router
-├── lib.rs          # ALL mod declarations here; binary imports via biolab::...
-├── config.rs       # Token management (env → keyring → legacy migration), base URL
-├── client.rs       # BiolabClient factory, re-exports BiolabError
-├── errors.rs       # BiolabError enum (thiserror)
+├── lib.rs          # ALL mod declarations here; binary imports via scitex_cli::...
+├── config.rs       # Token management (env → keyring → optional token file), base URL
+├── client.rs       # ScientexClient factory, re-exports ScientexError
+├── errors.rs       # ScientexError enum (thiserror)
 ├── types.rs        # Serde request/response structs + custom deserializers
 ├── auth.rs         # Feishu OAuth login (custom CLI poll flow)
 ├── output.rs       # Formatting: JSON (--format json) vs colored text
@@ -60,7 +60,7 @@ src/
 │   ├── inventory.rs# list / get / stats / checkin / checkout / locations
 │   ├── lab.rs      # lab info / members / invite / join / approval rules
 │   └── skills.rs   # AI agent skill installation and check
-└── services/       # impl BiolabClient blocks, domain-specific API methods
+└── services/       # impl ScientexClient blocks, domain-specific API methods
     ├── orders.rs   # Order API path builders + unit tests
     ├── users.rs    # User API path builders + unit tests
     ├── templates.rs# Template API path builders + unit tests
@@ -71,21 +71,28 @@ src/
 
 ### Key Patterns
 
-- **Credential chain**: `BIOLAB_TOKEN` env var → OS keyring → legacy `~/.biolab_token` migration → OAuth poll
-- **Token storage**: OS keyring by default, valid 8 days; plaintext file fallback requires explicit `BIOLAB_INSECURE_TOKEN_FILE=1`
-- **Module ownership**: All `mod` declarations live in `lib.rs`; `main.rs` imports from `biolab::...` (the library crate). This avoids the binary crate's `crate::` resolving differently from the library's `crate::`
-- **HTTP client**: `BiolabHttp` (in `http.rs`) wraps reqwest with Bearer token injection; `api_response.rs` provides `extract_array`/`extract_object`/`envelope_data` for response unwrapping
-- **Domain services**: `impl BiolabClient` blocks in `services/*.rs` call `self.http.get/post/...` then `extract_array`/`extract_object` — all methods unwrap the `{ "data": ... }` envelope consistently
+- **Credential chain**: `SCIENTEX_TOKEN` env var → OS keyring (`scitex-cli`) → optional `~/.scitex_token` file → OAuth poll
+- **Token storage**: OS keyring by default, valid 8 days; plaintext file fallback requires explicit `SCIENTEX_INSECURE_TOKEN_FILE=1`
+- **Module ownership**: All `mod` declarations live in `lib.rs`; `main.rs` imports from `scitex_cli::...` (the library crate). This avoids the binary crate's `crate::` resolving differently from the library's `crate::`
+- **HTTP client**: `ScientexHttp` (in `http.rs`) wraps reqwest with Bearer token injection; `api_response.rs` provides `extract_array`/`extract_object`/`envelope_data` for response unwrapping
+- **Domain services**: `impl ScientexClient` blocks in `services/*.rs` call `self.http.get/post/...` then `extract_array`/`extract_object` — all methods unwrap the `{ "data": ... }` envelope consistently
 - **Shared helpers**: `services/helpers.rs` — `empty_body()`, `single_field_body()`, `url_encode()`
 - **Custom deserializers**: `string_or_f64` / `opt_string_or_f64` in `types.rs` — backend sometimes returns numeric fields as JSON strings
-- **Errors**: `BiolabError` in `src/errors.rs` (not `error.rs` — avoids collision with `std::error`)
+- **Errors**: `ScientexError` in `src/errors.rs` (not `error.rs` — avoids collision with `std::error`)
 - **Output modes**: `-f json` for machine-readable, default text for human (colored status badges)
-- **Agent skills**: `biolab skills install` delegates to `npx skills add xuyuan-hub/biolab-cli --skill biolab-api`, so supported agents refresh their own skill indexes.
+- **Agent skills**: `scitex skills install` delegates to `npx skills add xuyuan-hub/scitex-cli`, so supported agents refresh their own skill indexes.
 - **Tests**: `cargo test` must pass before every submission — CI gate enforces this (23 unit tests across api_response, services, types)
 
 ### API Base URL
 
-Default: `http://8.136.56.203/api/v1` — overrideable via `BIOLAB_BASE_URL` env var.
+Default: `http://8.136.56.203/api/v1` — overrideable via `SCIENTEX_BASE_URL` env var.
+
+### Agent Skills
+
+AI agent skills (SKILL.md files) live under `skills/` — this directory is tracked in git.
+The `.agents/skills/` directory is **gitignored** and contains symlinks managed by
+the skills installer (`scitex skills install` / `npx skills add`). When adding or
+editing a skill, always work in `skills/scitex-<name>/SKILL.md`, never in `.agents/`.
 
 ## Business Domain
 
@@ -105,7 +112,7 @@ pending → ordered → received → stored
 Five workflow roles: `pi` > `procurement` > `finance` > `warehouse` > `member`
 
 ### Reference Docs
-Detailed API schemas are bundled in `skills/biolab-api/references/` and installed by the standard `skills` installer:
+Detailed API schemas are bundled with the domain skills installed by the standard `skills` installer:
 - `orders.md` — Order schemas, status machine, supplier differences
 - `inventory.md` — Stock/checkin/checkout schemas
 - `templates.md` — Template fields for order defaults
@@ -114,7 +121,7 @@ Detailed API schemas are bundled in `skills/biolab-api/references/` and installe
 
 ## Development Workflow
 
-All feature work follows a doc-driven process using plan files under `docs/` with `BiolabCli-YYYY-MM-DD-Name.md` naming (Name in Chinese). Non-plan docs (installation guides, command references) do not follow this pattern.
+All feature work follows a doc-driven process using plan files under `docs/` with `ScientexCli-YYYY-MM-DD-Name.md` naming (Name in Chinese). Non-plan docs (installation guides, command references) do not follow this pattern.
 
 ### Document Organization
 

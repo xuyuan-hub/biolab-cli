@@ -1,10 +1,13 @@
 use crate::api_response::{envelope_data, extract_array, extract_paginated, PaginatedList};
-use crate::client::BiolabClient;
-use crate::errors::BiolabError;
+use crate::client::ScientexClient;
+use crate::errors::ScientexError;
 use crate::services::{path_segment_encode, url_encode};
 
-impl BiolabClient {
-    pub async fn get_project_by_slug(&self, slug: &str) -> Result<serde_json::Value, BiolabError> {
+impl ScientexClient {
+    pub async fn get_project_by_slug(
+        &self,
+        slug: &str,
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.get(&project_by_slug_path(slug)).await?;
         Ok(envelope_data(resp))
     }
@@ -16,7 +19,7 @@ impl BiolabClient {
         limit: u32,
         search: Option<&str>,
         filters: Option<&str>,
-    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_germplasm_list_path(
@@ -30,7 +33,7 @@ impl BiolabClient {
         &self,
         slug: &str,
         data: &serde_json::Value,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.post(&project_germplasm_path(slug), data).await?;
         Ok(envelope_data(resp))
     }
@@ -39,7 +42,7 @@ impl BiolabClient {
         &self,
         slug: &str,
         germplasm_id: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_germplasm_detail_path(slug, germplasm_id))
@@ -52,7 +55,7 @@ impl BiolabClient {
         slug: &str,
         germplasm_id: &str,
         data: &serde_json::Value,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .patch(&project_germplasm_detail_path(slug, germplasm_id), data)
@@ -64,7 +67,7 @@ impl BiolabClient {
         &self,
         slug: &str,
         germplasm_id: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .delete(&project_germplasm_detail_path(slug, germplasm_id))
@@ -76,7 +79,7 @@ impl BiolabClient {
         &self,
         slug: &str,
         germplasm_id: &str,
-    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_germplasm_subresource_path(
@@ -92,7 +95,7 @@ impl BiolabClient {
         &self,
         slug: &str,
         germplasm_id: &str,
-    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_germplasm_subresource_path(
@@ -109,7 +112,7 @@ impl BiolabClient {
         slug: &str,
         skip: u32,
         limit: u32,
-    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_planting_list_path(slug, skip, limit))
@@ -121,7 +124,7 @@ impl BiolabClient {
         &self,
         slug: &str,
         data: &serde_json::Value,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.post(&project_planting_path(slug), data).await?;
         Ok(envelope_data(resp))
     }
@@ -130,7 +133,7 @@ impl BiolabClient {
         &self,
         slug: &str,
         order_id: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_planting_detail_path(slug, order_id))
@@ -143,7 +146,7 @@ impl BiolabClient {
         slug: &str,
         order_id: &str,
         data: &serde_json::Value,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .patch(&project_planting_detail_path(slug, order_id), data)
@@ -155,7 +158,7 @@ impl BiolabClient {
         &self,
         slug: &str,
         order_id: &str,
-    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_planting_subresource_path(slug, order_id, "items"))
@@ -167,7 +170,7 @@ impl BiolabClient {
         &self,
         slug: &str,
         order_id: &str,
-    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&project_planting_subresource_path(
@@ -182,7 +185,7 @@ impl BiolabClient {
         slug: &str,
         order_id: &str,
         data: &serde_json::Value,
-    ) -> Result<Vec<serde_json::Value>, BiolabError> {
+    ) -> Result<Vec<serde_json::Value>, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(

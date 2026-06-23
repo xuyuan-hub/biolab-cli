@@ -1,21 +1,21 @@
 use std::sync::Arc;
 
-use biolab::commands::{
+use clap::{Parser, Subcommand, ValueEnum};
+use colored::Colorize;
+use scitex_cli::commands::{
     admin, error_report, inventory, lab, orders, project, projects, skills, tasks, templates,
     update, users,
 };
-use biolab::config::Config;
-use biolab::error_history::ErrorHistory;
-use biolab::errors::BiolabError;
-use biolab::output::OutputFormat;
-use biolab::types::{ErrorCategory, ErrorReportCreate};
-use biolab::{check_status, login, logout, poll_login_from_env};
-use clap::{Parser, Subcommand, ValueEnum};
-use colored::Colorize;
+use scitex_cli::config::Config;
+use scitex_cli::error_history::ErrorHistory;
+use scitex_cli::errors::ScientexError;
+use scitex_cli::output::OutputFormat;
+use scitex_cli::types::{ErrorCategory, ErrorReportCreate};
+use scitex_cli::{check_status, login, logout, poll_login_from_env};
 
-/// Biolab lab management CLI.
+/// Scientex lab management CLI.
 #[derive(Parser)]
-#[command(name = "biolab", version, about, long_about = None)]
+#[command(name = "scitex", version, about, long_about = None)]
 struct Cli {
     /// Output format.
     #[arg(short, long, value_enum, default_value_t = OutputFormatArg::Text, global = true)]
@@ -109,8 +109,8 @@ async fn main() {
 
     let result = match cli.command {
         None => {
-            println!("{}", "Biolab CLI".bold());
-            println!("\nRun biolab --help to see available commands.\n");
+            println!("{}", "Scientex CLI".bold());
+            println!("\nRun scitex --help to see available commands.\n");
             return;
         }
         Some(Commands::Login) => {
@@ -154,18 +154,14 @@ async fn main() {
 
         // Always record the error locally
         let mut history = ErrorHistory::load();
-        history.record(
-            &fingerprint,
-            &cmd,
-            error_type_label(&e),
-            &e.to_string(),
-        );
+        history.record(&fingerprint, &cmd, error_type_label(&e), &e.to_string());
 
         eprintln!("{}: {e}", "Error".red().bold());
 
         // If the same error keeps happening, offer to report it
         if history.check_threshold(&fingerprint, 10, 3) {
-            if prompt_yn("检测到同类错误反复出现。是否上报错误详情帮助改进？") {
+            if prompt_yn("检测到同类错误反复出现。是否上报错误详情帮助改进？")
+            {
                 match submit_error_report(&config, &e, &cmd).await {
                     Ok(report_id) => {
                         eprintln!("{} 错误已上报（ID: {}）", "✓".green(), report_id);
@@ -184,9 +180,9 @@ async fn main() {
 fn command_context() -> String {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        return "biolab".to_string();
+        return "scitex".to_string();
     }
-    let mut ctx = String::from("biolab");
+    let mut ctx = String::from("scitex");
     let mut skip_next = false;
     for (_i, arg) in args.iter().enumerate().skip(1) {
         if skip_next {
@@ -196,7 +192,10 @@ fn command_context() -> String {
         if arg == "--token" || arg == "-t" || arg == "--password" {
             ctx.push_str(" ***");
             skip_next = true;
-        } else if arg.starts_with("--token=") || arg.starts_with("-t=") || arg.starts_with("--password=") {
+        } else if arg.starts_with("--token=")
+            || arg.starts_with("-t=")
+            || arg.starts_with("--password=")
+        {
             ctx.push_str(" ***");
         } else {
             ctx.push(' ');
@@ -210,12 +209,12 @@ fn error_fingerprint(e: &anyhow::Error, cmd: &str) -> String {
     let err_str = e.to_string();
     // Extract key error pattern: status code + path for HTTP errors,
     // or error variant name for other errors
-    if let Some(biolab_err) = e.downcast_ref::<BiolabError>() {
-        match biolab_err {
-            BiolabError::HttpError { status, path, .. } => {
+    if let Some(scitex_err) = e.downcast_ref::<ScientexError>() {
+        match scitex_err {
+            ScientexError::HttpError { status, path, .. } => {
                 format!("{cmd}::HttpError({status})::{path}")
             }
-            BiolabError::NotAuthenticated => {
+            ScientexError::NotAuthenticated => {
                 format!("{cmd}::NotAuthenticated")
             }
             _ => {
@@ -224,19 +223,23 @@ fn error_fingerprint(e: &anyhow::Error, cmd: &str) -> String {
         }
     } else {
         // For anyhow-wrapped errors, take first 80 chars of message as fingerprint
-        let short = if err_str.len() > 80 { &err_str[..80] } else { &err_str };
+        let short = if err_str.len() > 80 {
+            &err_str[..80]
+        } else {
+            &err_str
+        };
         format!("{cmd}::Anyhow({short})")
     }
 }
 
 fn error_type_label(e: &anyhow::Error) -> &'static str {
-    if let Some(biolab_err) = e.downcast_ref::<BiolabError>() {
-        match biolab_err {
-            BiolabError::HttpError { .. } => "HttpError",
-            BiolabError::RequestError(_) => "RequestError",
-            BiolabError::NotAuthenticated => "NotAuthenticated",
-            BiolabError::ParseError(_) => "ParseError",
-            BiolabError::IoError(_) => "IoError",
+    if let Some(scitex_err) = e.downcast_ref::<ScientexError>() {
+        match scitex_err {
+            ScientexError::HttpError { .. } => "HttpError",
+            ScientexError::RequestError(_) => "RequestError",
+            ScientexError::NotAuthenticated => "NotAuthenticated",
+            ScientexError::ParseError(_) => "ParseError",
+            ScientexError::IoError(_) => "IoError",
         }
     } else {
         "Unknown"
@@ -244,16 +247,16 @@ fn error_type_label(e: &anyhow::Error) -> &'static str {
 }
 
 fn error_category(e: &anyhow::Error) -> ErrorCategory {
-    if let Some(biolab_err) = e.downcast_ref::<BiolabError>() {
-        match biolab_err {
-            BiolabError::HttpError { status, .. } if *status == 401 || *status == 403 => {
+    if let Some(scitex_err) = e.downcast_ref::<ScientexError>() {
+        match scitex_err {
+            ScientexError::HttpError { status, .. } if *status == 401 || *status == 403 => {
                 ErrorCategory::Permission
             }
-            BiolabError::NotAuthenticated => ErrorCategory::Permission,
-            BiolabError::ParseError(_) => ErrorCategory::Data,
-            BiolabError::RequestError(_) => ErrorCategory::Functional,
-            BiolabError::HttpError { .. } => ErrorCategory::Functional,
-            BiolabError::IoError(_) => ErrorCategory::Other,
+            ScientexError::NotAuthenticated => ErrorCategory::Permission,
+            ScientexError::ParseError(_) => ErrorCategory::Data,
+            ScientexError::RequestError(_) => ErrorCategory::Functional,
+            ScientexError::HttpError { .. } => ErrorCategory::Functional,
+            ScientexError::IoError(_) => ErrorCategory::Other,
         }
     } else {
         ErrorCategory::Other
@@ -278,7 +281,7 @@ async fn submit_error_report(
     e: &anyhow::Error,
     cmd: &str,
 ) -> Result<String, anyhow::Error> {
-    let client = biolab::client::BiolabClient::new(Arc::clone(config))?;
+    let client = scitex_cli::client::ScientexClient::new(Arc::clone(config))?;
     let category = error_category(e);
     let title = format!("{cmd}: {}", error_type_label(e));
     let description = format!(

@@ -97,27 +97,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
-name = "biolab-cli"
-version = "0.4.10"
-dependencies = [
- "anyhow",
- "clap",
- "colored",
- "dirs",
- "hex",
- "keyring",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "thiserror",
- "tokio",
- "url",
- "windows-sys 0.59.0",
- "zip",
-]
-
-[[package]]
 name = "bitflags"
 version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1298,6 +1277,27 @@ name = "ryu"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
+
+[[package]]
+name = "scitex-cli"
+version = "0.4.10"
+dependencies = [
+ "anyhow",
+ "clap",
+ "colored",
+ "dirs",
+ "hex",
+ "keyring",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "tokio",
+ "url",
+ "windows-sys 0.59.0",
+ "zip",
+]
 
 [[package]]
 name = "scopeguard"

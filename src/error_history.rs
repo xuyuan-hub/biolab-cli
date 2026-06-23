@@ -83,7 +83,9 @@ impl ErrorHistory {
 }
 
 fn history_path() -> PathBuf {
-    dirs_next().unwrap_or_else(|| PathBuf::from(".")).join(".biolab_error_history.json")
+    dirs_next()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".scitex_error_history.json")
 }
 
 fn dirs_next() -> Option<PathBuf> {
@@ -118,11 +120,7 @@ fn dirs_next_home() -> Option<PathBuf> {
         std::env::var("HOME")
             .ok()
             .map(PathBuf::from)
-            .or_else(|| {
-                std::env::var("USERPROFILE")
-                    .ok()
-                    .map(PathBuf::from)
-            })
+            .or_else(|| std::env::var("USERPROFILE").ok().map(PathBuf::from))
     }
 }
 
@@ -233,12 +231,7 @@ mod tests {
     fn fifo_truncates_at_50() {
         let mut history = ErrorHistory::load();
         for i in 0..60 {
-            history.record(
-                &format!("fp_{i}"),
-                "cmd",
-                "E",
-                "msg",
-            );
+            history.record(&format!("fp_{i}"), "cmd", "E", "msg");
         }
         // Should have only 50 entries, dropping the first 10
         // The first entry should now be fp_10

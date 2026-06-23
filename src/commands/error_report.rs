@@ -3,7 +3,7 @@ use std::sync::Arc;
 use clap::Args;
 use colored::Colorize;
 
-use crate::client::BiolabClient;
+use crate::client::ScientexClient;
 use crate::config::Config;
 use crate::output::{print_result, OutputFormat};
 use crate::types::{ErrorCategory, ErrorReportCreate};
@@ -58,7 +58,7 @@ pub async fn run(
     config: &Arc<Config>,
     format: &OutputFormat,
 ) -> anyhow::Result<()> {
-    let client = BiolabClient::new(Arc::clone(config))?;
+    let client = ScientexClient::new(Arc::clone(config))?;
     let user_agent = crate_user_agent();
 
     let report = ErrorReportCreate {
@@ -74,11 +74,7 @@ pub async fn run(
     match format {
         OutputFormat::Json => print_result(&resp, format),
         OutputFormat::Text => {
-            println!(
-                "{}  错误报告已提交（ID: {}）",
-                "✓".green(),
-                resp.id
-            );
+            println!("{}  错误报告已提交（ID: {}）", "✓".green(), resp.id);
         }
     }
 
@@ -95,5 +91,5 @@ pub fn crate_user_agent() -> String {
     } else {
         "unknown"
     };
-    format!("biolab-cli/{} ({})", env!("CARGO_PKG_VERSION"), os)
+    format!("scitex-cli/{} ({})", env!("CARGO_PKG_VERSION"), os)
 }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use clap::{Args, Subcommand};
 
-use crate::client::BiolabClient;
+use crate::client::ScientexClient;
 use crate::config::Config;
 use crate::output::{
     print_order, print_order_brief, print_pagination_metadata, print_result, unique_output_path,
@@ -71,7 +71,7 @@ pub async fn run(
     config: &Arc<Config>,
     format: &OutputFormat,
 ) -> anyhow::Result<()> {
-    let client = BiolabClient::new(Arc::clone(config))?;
+    let client = ScientexClient::new(Arc::clone(config))?;
 
     match &args.command {
         OrdersCommand::Stats => {

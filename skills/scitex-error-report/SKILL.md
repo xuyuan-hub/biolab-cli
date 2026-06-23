@@ -1,29 +1,29 @@
 ---
-name: biolab-error-report
+name: scitex-error-report
 version: 0.1.0
-description: "Use when the user encounters a Biolab CLI error and wants to submit an error report, or when the CLI detects repeated errors and suggests reporting. Categorizes errors into ui-display, functional, data, performance, permission, or other."
+description: "Use when the user encounters a Scientex CLI error and wants to submit an error report, or when the CLI detects repeated errors and suggests reporting. Categorizes errors into ui-display, functional, data, performance, permission, or other."
 metadata:
   requires:
-    bins: ["biolab"]
-  cliHelp: "biolab error-report --help"
+    bins: ["scitex"]
+  cliHelp: "scitex error-report --help"
 ---
 
-# Biolab Error Report
+# Scientex Error Report
 
-Before using, read `../biolab-shared/SKILL.md` to ensure the CLI is set up and authenticated.
+Before using, read `../scitex-shared/SKILL.md` to ensure the CLI is set up and authenticated.
 
 ## When to Use
 
 Use this skill when:
 
-- The user wants to report a Biolab CLI bug, crash, or unexpected behavior.
+- The user wants to report a Scientex CLI bug, crash, or unexpected behavior.
 - The CLI has detected repeated errors and suggests submitting a report.
 - The user describes an error pattern and asks to "report it" or "send feedback."
 
 ## Command
 
 ```bash
-biolab error-report \
+scitex error-report \
   --category <CATEGORY> \
   --title "<TITLE>" \
   --description "<DESCRIPTION>" \
@@ -52,17 +52,17 @@ biolab error-report \
 3. **Description** should include:
    - Exact command that was run (sanitized: remove `--token` values, passwords, file paths)
    - Full error message
-   - CLI version (from `biolab --version`)
+   - CLI version (from `scitex --version`)
    - OS the user is on
 4. **Use `-f json`** to capture the report ID on success.
-5. If the user is not logged in (`biolab status` shows unauthenticated), remind them to login first — error reports require authentication.
+5. If the user is not logged in (`scitex status` shows unauthenticated), remind them to login first — error reports require authentication.
 
 ## Example
 
 ```bash
-biolab error-report \
+scitex error-report \
   -c functional \
   -t "orders create: 422 when primer_name missing" \
-  -d "Running 'biolab orders create --supplier sangon' without --primer-name returned HTTP 422 with no clear hint. CLI v0.4.10 on Windows." \
+  -d "Running 'scitex orders create --supplier sangon' without --primer-name returned HTTP 422 with no clear hint. CLI v0.4.10 on Windows." \
   -f json
 ```

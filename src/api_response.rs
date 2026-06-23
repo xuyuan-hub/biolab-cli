@@ -1,6 +1,6 @@
 use serde::de::DeserializeOwned;
 
-use crate::errors::BiolabError;
+use crate::errors::ScientexError;
 
 /// A paginated list response that preserves both the items array and the
 /// backend-provided pagination metadata (count, total_pages, etc.).
@@ -24,11 +24,11 @@ impl<T: serde::de::DeserializeOwned> PaginatedList<T> {
     /// - `{ data: { items: [...], count: N, ... } }` — nested in `data`
     /// - `{ items: [...], count: N, ... }` — no `data` wrapper
     /// - `[...]` — bare array, no pagination
-    fn from_raw(resp: serde_json::Value) -> Result<Self, BiolabError> {
+    fn from_raw(resp: serde_json::Value) -> Result<Self, ScientexError> {
         // Case 1: bare array
         if resp.is_array() {
-            let items: Vec<T> =
-                serde_json::from_value(resp).map_err(|e| BiolabError::ParseError(e.to_string()))?;
+            let items: Vec<T> = serde_json::from_value(resp)
+                .map_err(|e| ScientexError::ParseError(e.to_string()))?;
             let len = items.len() as u64;
             return Ok(PaginatedList {
                 items,
@@ -42,7 +42,7 @@ impl<T: serde::de::DeserializeOwned> PaginatedList<T> {
 
         let obj = resp
             .as_object()
-            .ok_or_else(|| BiolabError::ParseError("expected object or array".into()))?;
+            .ok_or_else(|| ScientexError::ParseError("expected object or array".into()))?;
 
         // Extract pagination metadata from top level (before stripping data wrapper)
         let count = obj.get("count").and_then(|v| v.as_u64());
@@ -56,7 +56,7 @@ impl<T: serde::de::DeserializeOwned> PaginatedList<T> {
             if data.is_array() {
                 // `{ data: [...], count: N, ... }` — flat array with top-level pagination
                 let items: Vec<T> = serde_json::from_value(data.clone())
-                    .map_err(|e| BiolabError::ParseError(e.to_string()))?;
+                    .map_err(|e| ScientexError::ParseError(e.to_string()))?;
                 let len = items.len() as u64;
                 return Ok(PaginatedList {
                     items,
@@ -74,13 +74,13 @@ impl<T: serde::de::DeserializeOwned> PaginatedList<T> {
                     .or_else(|| data_obj.get("results"))
                     .or_else(|| data_obj.get("records"))
                     .ok_or_else(|| {
-                        BiolabError::ParseError(
+                        ScientexError::ParseError(
                             "expected data object with items/results/records".into(),
                         )
                     })?;
 
                 let items: Vec<T> = serde_json::from_value(items_key.clone())
-                    .map_err(|e| BiolabError::ParseError(e.to_string()))?;
+                    .map_err(|e| ScientexError::ParseError(e.to_string()))?;
                 let len = items.len() as u64;
 
                 // Prefer top-level pagination, fall back to nested pagination
@@ -107,13 +107,13 @@ impl<T: serde::de::DeserializeOwned> PaginatedList<T> {
             .or_else(|| obj.get("results"))
             .or_else(|| obj.get("records"))
             .ok_or_else(|| {
-                BiolabError::ParseError(
+                ScientexError::ParseError(
                     "expected paginated object with data/items/results/records".into(),
                 )
             })?;
 
         let items: Vec<T> = serde_json::from_value(items_key.clone())
-            .map_err(|e| BiolabError::ParseError(e.to_string()))?;
+            .map_err(|e| ScientexError::ParseError(e.to_string()))?;
         let len = items.len() as u64;
 
         Ok(PaginatedList {
@@ -131,29 +131,29 @@ impl<T: serde::de::DeserializeOwned> PaginatedList<T> {
 /// Preserves the backend `count` field so the CLI can show totals.
 pub(crate) fn extract_paginated<T: DeserializeOwned>(
     resp: serde_json::Value,
-) -> Result<PaginatedList<T>, BiolabError> {
+) -> Result<PaginatedList<T>, ScientexError> {
     PaginatedList::from_raw(resp)
 }
 
 pub(crate) async fn parse_response<T: DeserializeOwned>(
     resp: reqwest::Response,
     path: &str,
-) -> Result<T, BiolabError> {
+) -> Result<T, ScientexError> {
     if !resp.status().is_success() {
         let status = resp.status().as_u16();
         let detail = resp.text().await.unwrap_or_default();
-        return Err(BiolabError::HttpError {
+        return Err(ScientexError::HttpError {
             status,
             path: path.to_string(),
             detail,
         });
     }
-    resp.json::<T>().await.map_err(BiolabError::RequestError)
+    resp.json::<T>().await.map_err(ScientexError::RequestError)
 }
 
 pub(crate) fn extract_array<T: DeserializeOwned>(
     resp: serde_json::Value,
-) -> Result<Vec<T>, BiolabError> {
+) -> Result<Vec<T>, ScientexError> {
     let value = envelope_data(resp);
     let array_value = if value.is_array() {
         value
@@ -164,19 +164,20 @@ pub(crate) fn extract_array<T: DeserializeOwned>(
             .or_else(|| value.get("records"))
             .cloned()
             .ok_or_else(|| {
-                BiolabError::ParseError(
+                ScientexError::ParseError(
                     "expected array response or data/items/results/records array".to_string(),
                 )
             })?
     };
 
-    serde_json::from_value(array_value).map_err(|e| BiolabError::ParseError(e.to_string()))
+    serde_json::from_value(array_value).map_err(|e| ScientexError::ParseError(e.to_string()))
 }
 
 pub(crate) fn extract_object<T: DeserializeOwned>(
     resp: serde_json::Value,
-) -> Result<T, BiolabError> {
-    serde_json::from_value(envelope_data(resp)).map_err(|e| BiolabError::ParseError(e.to_string()))
+) -> Result<T, ScientexError> {
+    serde_json::from_value(envelope_data(resp))
+        .map_err(|e| ScientexError::ParseError(e.to_string()))
 }
 
 pub(crate) fn envelope_data(resp: serde_json::Value) -> serde_json::Value {
@@ -218,7 +219,7 @@ mod tests {
 
     #[test]
     fn rejects_non_array_payload() {
-        let result: Result<Vec<Item>, BiolabError> =
+        let result: Result<Vec<Item>, ScientexError> =
             extract_array(serde_json::json!({ "data": { "id": "a" } }));
         assert!(result.is_err());
     }

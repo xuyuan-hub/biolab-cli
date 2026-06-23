@@ -1,25 +1,25 @@
 use std::sync::Arc;
 
 use crate::config::Config;
-use crate::http::BiolabHttp;
+use crate::http::ScientexHttp;
 
-pub use crate::errors::BiolabError;
+pub use crate::errors::ScientexError;
 
-pub struct BiolabClient {
-    pub(crate) http: BiolabHttp,
+pub struct ScientexClient {
+    pub(crate) http: ScientexHttp,
 }
 
-impl BiolabClient {
-    pub fn new(config: Arc<Config>) -> Result<Self, BiolabError> {
+impl ScientexClient {
+    pub fn new(config: Arc<Config>) -> Result<Self, ScientexError> {
         Ok(Self {
-            http: BiolabHttp::new(config)?,
+            http: ScientexHttp::new(config)?,
         })
     }
 
-    pub fn with_token(config: Arc<Config>, token: &str) -> Result<Self, BiolabError> {
+    pub fn with_token(config: Arc<Config>, token: &str) -> Result<Self, ScientexError> {
         config
             .save_token(token)
-            .map_err(|e| BiolabError::ParseError(e.to_string()))?;
+            .map_err(|e| ScientexError::ParseError(e.to_string()))?;
         Self::new(config)
     }
 }

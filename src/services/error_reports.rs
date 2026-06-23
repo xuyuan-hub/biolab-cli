@@ -1,17 +1,14 @@
 use crate::api_response::extract_object;
-use crate::client::BiolabClient;
-use crate::errors::BiolabError;
+use crate::client::ScientexClient;
+use crate::errors::ScientexError;
 use crate::types::{ErrorReportCreate, ErrorReportResponse};
 
-impl BiolabClient {
+impl ScientexClient {
     pub async fn post_error_report(
         &self,
         report: &ErrorReportCreate,
-    ) -> Result<ErrorReportResponse, BiolabError> {
-        let resp: serde_json::Value = self
-            .http
-            .post("/api/v1/error-reports/", report)
-            .await?;
+    ) -> Result<ErrorReportResponse, ScientexError> {
+        let resp: serde_json::Value = self.http.post("/api/v1/error-reports/", report).await?;
         extract_object(resp)
     }
 }

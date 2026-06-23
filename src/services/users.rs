@@ -1,15 +1,15 @@
 use crate::api_response::{envelope_data, extract_object};
-use crate::client::BiolabClient;
-use crate::errors::BiolabError;
+use crate::client::ScientexClient;
+use crate::errors::ScientexError;
 use crate::types::User;
 
-impl BiolabClient {
-    pub async fn get_me(&self) -> Result<User, BiolabError> {
+impl ScientexClient {
+    pub async fn get_me(&self) -> Result<User, ScientexError> {
         let resp: serde_json::Value = self.http.get("/users/me").await?;
         extract_object(resp)
     }
 
-    pub async fn update_me(&self, data: &serde_json::Value) -> Result<User, BiolabError> {
+    pub async fn update_me(&self, data: &serde_json::Value) -> Result<User, ScientexError> {
         let resp: serde_json::Value = self.http.patch("/users/me", data).await?;
         extract_object(resp)
     }
@@ -18,7 +18,7 @@ impl BiolabClient {
         &self,
         current: &str,
         new: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .patch("/users/me/password", &password_change_body(current, new))

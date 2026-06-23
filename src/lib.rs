@@ -8,12 +8,12 @@ pub mod errors;
 mod http;
 pub mod output;
 pub mod services;
-/// Biolab API client library.
+/// Scientex API client library.
 pub mod types;
 
 pub use auth::{check_status, login, logout, poll_login_from_env};
-pub use client::BiolabClient;
+pub use client::ScientexClient;
 pub use config::Config;
-pub use errors::BiolabError;
+pub use errors::ScientexError;
 pub use output::{print_result, OutputFormat};
 pub use types::*;

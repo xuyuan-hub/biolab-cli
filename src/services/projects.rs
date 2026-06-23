@@ -1,19 +1,19 @@
 use crate::api_response::{envelope_data, extract_paginated, PaginatedList};
-use crate::client::BiolabClient;
-use crate::errors::BiolabError;
+use crate::client::ScientexClient;
+use crate::errors::ScientexError;
 use crate::services::path_segment_encode;
 
-impl BiolabClient {
+impl ScientexClient {
     pub async fn list_projects(
         &self,
         skip: u32,
         limit: u32,
-    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, ScientexError> {
         let resp: serde_json::Value = self.http.get(&list_projects_path(skip, limit)).await?;
         extract_paginated(resp)
     }
 
-    pub async fn get_project(&self, project_id: &str) -> Result<serde_json::Value, BiolabError> {
+    pub async fn get_project(&self, project_id: &str) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.get(&project_path(project_id)).await?;
         Ok(envelope_data(resp))
     }
@@ -21,7 +21,7 @@ impl BiolabClient {
     pub async fn create_project(
         &self,
         data: &serde_json::Value,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.post("/projects", data).await?;
         Ok(envelope_data(resp))
     }
@@ -30,7 +30,7 @@ impl BiolabClient {
         &self,
         project_id: &str,
         data: &serde_json::Value,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.patch(&project_path(project_id), data).await?;
         Ok(envelope_data(resp))
     }
@@ -38,7 +38,7 @@ impl BiolabClient {
     pub async fn list_project_members(
         &self,
         project_id: &str,
-    ) -> Result<PaginatedList<serde_json::Value>, BiolabError> {
+    ) -> Result<PaginatedList<serde_json::Value>, ScientexError> {
         let resp: serde_json::Value = self.http.get(&project_members_path(project_id)).await?;
         extract_paginated(resp)
     }
@@ -48,7 +48,7 @@ impl BiolabClient {
         project_id: &str,
         user_id: &str,
         role: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(
@@ -63,7 +63,7 @@ impl BiolabClient {
         &self,
         project_id: &str,
         user_id: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .delete(&project_member_path(project_id, user_id))

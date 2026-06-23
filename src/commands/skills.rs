@@ -5,21 +5,21 @@ use serde::Serialize;
 
 use crate::output::{print_result, OutputFormat};
 
-const SKILLS_REPO: &str = "xuyuan-hub/biolab-cli";
+const SKILLS_REPO: &str = "xuyuan-hub/scitex-cli";
 const EXPECTED_SKILLS: &[&str] = &[
-    "biolab-shared",
-    "biolab-orders",
-    "biolab-templates",
-    "biolab-inventory",
-    "biolab-admin",
-    "biolab-lab",
-    "biolab-project",
-    "biolab-users",
-    "biolab-evo",
-    "biolab-experiment",
-    "biolab-task",
-    "biolab-tashan",
-    "biolab-error-report",
+    "scitex-shared",
+    "scitex-orders",
+    "scitex-templates",
+    "scitex-inventory",
+    "scitex-admin",
+    "scitex-lab",
+    "scitex-project",
+    "scitex-users",
+    "scitex-evo",
+    "scitex-experiment",
+    "scitex-task",
+    "scitex-tashan",
+    "scitex-error-report",
 ];
 
 #[derive(Args)]
@@ -201,8 +201,8 @@ mod tests {
 
     #[test]
     fn parses_skills_ls_output() {
-        let parsed = parse_skills_list("- biolab-orders@0.2.5\nlark-calendar\nOther: heading");
-        assert!(parsed.contains(&"biolab-orders".to_string()));
+        let parsed = parse_skills_list("- scitex-orders@0.2.5\nlark-calendar\nOther: heading");
+        assert!(parsed.contains(&"scitex-orders".to_string()));
         assert!(parsed.contains(&"lark-calendar".to_string()));
         assert!(!parsed.contains(&"Other".to_string()));
     }
@@ -210,8 +210,8 @@ mod tests {
     #[test]
     fn parses_colored_skills_ls_output() {
         let parsed = parse_skills_list(
-            "\u{1b}[1mProject Skills\u{1b}[0m\n\n\u{1b}[36mbiolab-orders\u{1b}[0m \u{1b}[38;5;102m./.agents/skills/biolab-orders\u{1b}[0m",
+            "\u{1b}[1mProject Skills\u{1b}[0m\n\n\u{1b}[36mscitex-orders\u{1b}[0m \u{1b}[38;5;102m./.agents/skills/scitex-orders\u{1b}[0m",
         );
-        assert!(parsed.contains(&"biolab-orders".to_string()));
+        assert!(parsed.contains(&"scitex-orders".to_string()));
     }
 }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use clap::{Args, Subcommand};
 
-use crate::client::BiolabClient;
+use crate::client::ScientexClient;
 use crate::config::Config;
 use crate::output::{print_result, OutputFormat};
 
@@ -32,7 +32,7 @@ pub enum MeCommand {
 }
 
 pub async fn run(args: &MeArgs, config: &Arc<Config>, format: &OutputFormat) -> anyhow::Result<()> {
-    let client = BiolabClient::new(Arc::clone(config))?;
+    let client = ScientexClient::new(Arc::clone(config))?;
 
     match &args.command {
         None => {

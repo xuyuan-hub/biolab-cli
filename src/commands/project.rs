@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use clap::{Args, Subcommand};
 
-use crate::client::BiolabClient;
+use crate::client::ScientexClient;
 use crate::config::Config;
 use crate::output::{print_paginated_items, print_result, OutputFormat};
 
@@ -85,7 +85,7 @@ pub async fn run(
     config: &Arc<Config>,
     format: &OutputFormat,
 ) -> anyhow::Result<()> {
-    let client = BiolabClient::new(Arc::clone(config))?;
+    let client = ScientexClient::new(Arc::clone(config))?;
 
     match &args.command {
         ProjectCommand::Info => {
@@ -103,7 +103,7 @@ pub async fn run(
 }
 
 async fn run_germplasm(
-    client: &BiolabClient,
+    client: &ScientexClient,
     slug: &str,
     command: &GermplasmCommand,
     format: &OutputFormat,
@@ -162,7 +162,7 @@ async fn run_germplasm(
 }
 
 async fn run_planting(
-    client: &BiolabClient,
+    client: &ScientexClient,
     slug: &str,
     command: &PlantingCommand,
     format: &OutputFormat,
@@ -235,7 +235,7 @@ mod tests {
     }
 
     fn parse_project(args: &[&str]) -> ProjectArgs {
-        let cli = TestCli::try_parse_from(std::iter::once("biolab").chain(args.iter().copied()))
+        let cli = TestCli::try_parse_from(std::iter::once("scitex").chain(args.iter().copied()))
             .expect("project command should parse");
         match cli.command {
             TestCommand::Project(args) => args,
@@ -405,6 +405,6 @@ mod tests {
 
     #[test]
     fn rejects_unknown_project_subcommand() {
-        assert!(TestCli::try_parse_from(["biolab", "project", "tashan", "unknown"]).is_err());
+        assert!(TestCli::try_parse_from(["scitex", "project", "tashan", "unknown"]).is_err());
     }
 }

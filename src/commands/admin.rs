@@ -4,9 +4,9 @@ use anyhow::Context;
 use clap::{Args, Subcommand};
 use serde::Serialize;
 
-use crate::client::BiolabClient;
+use crate::client::ScientexClient;
 use crate::config::Config;
-use crate::errors::BiolabError;
+use crate::errors::ScientexError;
 use crate::output::{print_result, OutputFormat};
 use crate::types::StaffUserInfo;
 
@@ -28,24 +28,75 @@ pub enum AdminCommand {
 #[derive(Subcommand)]
 pub enum AdminTaskTypesCommand {
     /// Create a task type from a JSON file.
-    Create { file: String },
+    Create {
+        file: String,
+        /// SOP document file to attach after creation.
+        #[arg(long, value_name = "FILE")]
+        sop: Option<String>,
+        /// Work order document file to attach after creation.
+        #[arg(long, value_name = "FILE")]
+        work_order: Option<String>,
+        #[arg(long)]
+        lab_id: Option<String>,
+    },
     /// Delete a task type by id.
-    Delete { id: String },
+    Delete {
+        id: String,
+        #[arg(long)]
+        lab_id: Option<String>,
+    },
     /// Manage staff bindings for a task type.
     Staff {
         #[command(subcommand)]
         command: AdminTaskTypeStaffCommand,
+    },
+    /// List documents for a task type.
+    ListDocs {
+        type_id: String,
+        #[arg(long)]
+        lab_id: Option<String>,
+    },
+    /// Upload a document (SOP, work_order, or attachment) to a task type.
+    UploadDoc {
+        type_id: String,
+        file: String,
+        /// Document type: sop, work_order, attachment
+        #[arg(short = 'T', long, default_value = "sop")]
+        doc_type: String,
+        #[arg(long)]
+        lab_id: Option<String>,
+    },
+    /// Delete a document from a task type.
+    DeleteDoc {
+        type_id: String,
+        doc_id: String,
+        #[arg(long)]
+        lab_id: Option<String>,
     },
 }
 
 #[derive(Subcommand)]
 pub enum AdminTaskTypeStaffCommand {
     /// List staff bound to a task type.
-    List { type_id: String },
+    List {
+        type_id: String,
+        #[arg(long)]
+        lab_id: Option<String>,
+    },
     /// Bind one staff user to a task type.
-    Add { type_id: String, user_id: String },
+    Add {
+        type_id: String,
+        user_id: String,
+        #[arg(long)]
+        lab_id: Option<String>,
+    },
     /// Remove one staff user from a task type.
-    Remove { type_id: String, user_id: String },
+    Remove {
+        type_id: String,
+        user_id: String,
+        #[arg(long)]
+        lab_id: Option<String>,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -64,27 +115,56 @@ struct StaffBindingChange<'a> {
     removed: Option<bool>,
 }
 
+const VALID_DOCUMENT_TYPES: &[&str] = &["sop", "work_order", "attachment"];
+
 pub async fn run(
     args: &AdminArgs,
     config: &Arc<Config>,
     format: &OutputFormat,
 ) -> anyhow::Result<()> {
-    let client = BiolabClient::new(Arc::clone(config))?;
+    let client = ScientexClient::new(Arc::clone(config))?;
 
     match &args.command {
         AdminCommand::TaskTypes { command } => match command {
-            AdminTaskTypesCommand::Create { file } => {
+            AdminTaskTypesCommand::Create {
+                file,
+                sop,
+                work_order,
+                lab_id,
+            } => {
                 let data = read_json_file(file)?;
                 validate_task_type_create_payload(&data)?;
                 let task_type = client
-                    .create_admin_task_type(&data)
+                    .create_admin_task_type(&data, lab_id.as_deref())
                     .await
                     .map_err(admin_operation_error)?;
+                if let Some(sop_path) = sop {
+                    client
+                        .upload_admin_task_type_document(
+                            &task_type.id,
+                            sop_path,
+                            "sop",
+                            lab_id.as_deref(),
+                        )
+                        .await
+                        .map_err(admin_operation_error)?;
+                }
+                if let Some(wo_path) = work_order {
+                    client
+                        .upload_admin_task_type_document(
+                            &task_type.id,
+                            wo_path,
+                            "work_order",
+                            lab_id.as_deref(),
+                        )
+                        .await
+                        .map_err(admin_operation_error)?;
+                }
                 print_result(&task_type, format);
             }
-            AdminTaskTypesCommand::Delete { id } => {
+            AdminTaskTypesCommand::Delete { id, lab_id } => {
                 client
-                    .delete_admin_task_type(id)
+                    .delete_admin_task_type(id, lab_id.as_deref())
                     .await
                     .map_err(admin_operation_error)?;
                 match format {
@@ -97,6 +177,45 @@ pub async fn run(
             AdminTaskTypesCommand::Staff { command } => {
                 run_task_type_staff(&client, command, format).await?;
             }
+            AdminTaskTypesCommand::ListDocs { type_id, lab_id } => {
+                let docs = client
+                    .list_admin_task_type_documents(type_id, lab_id.as_deref())
+                    .await
+                    .map_err(admin_operation_error)?;
+                print_result(&docs, format);
+            }
+            AdminTaskTypesCommand::UploadDoc {
+                type_id,
+                file,
+                doc_type,
+                lab_id,
+            } => {
+                validate_document_type(doc_type)?;
+                let doc = client
+                    .upload_admin_task_type_document(type_id, file, doc_type, lab_id.as_deref())
+                    .await
+                    .map_err(admin_operation_error)?;
+                print_result(&doc, format);
+            }
+            AdminTaskTypesCommand::DeleteDoc {
+                type_id,
+                doc_id,
+                lab_id,
+            } => {
+                client
+                    .delete_admin_task_type_document(type_id, doc_id, lab_id.as_deref())
+                    .await
+                    .map_err(admin_operation_error)?;
+                match format {
+                    OutputFormat::Json => print_result(
+                        &serde_json::json!({"type_id": type_id, "doc_id": doc_id, "deleted": true}),
+                        format,
+                    ),
+                    OutputFormat::Text => {
+                        println!("Deleted document {doc_id} from task type {type_id}")
+                    }
+                }
+            }
         },
     }
 
@@ -104,21 +223,25 @@ pub async fn run(
 }
 
 async fn run_task_type_staff(
-    client: &BiolabClient,
+    client: &ScientexClient,
     command: &AdminTaskTypeStaffCommand,
     format: &OutputFormat,
 ) -> anyhow::Result<()> {
     match command {
-        AdminTaskTypeStaffCommand::List { type_id } => {
+        AdminTaskTypeStaffCommand::List { type_id, lab_id } => {
             let staff = client
-                .list_admin_task_type_staff(type_id)
+                .list_admin_task_type_staff(type_id, lab_id.as_deref())
                 .await
                 .map_err(admin_operation_error)?;
             print_staff_list(&staff, format);
         }
-        AdminTaskTypeStaffCommand::Add { type_id, user_id } => {
+        AdminTaskTypeStaffCommand::Add {
+            type_id,
+            user_id,
+            lab_id,
+        } => {
             client
-                .assign_admin_task_type_staff(type_id, user_id)
+                .assign_admin_task_type_staff(type_id, user_id, lab_id.as_deref())
                 .await
                 .map_err(admin_operation_error)?;
             match format {
@@ -136,9 +259,13 @@ async fn run_task_type_staff(
                 }
             }
         }
-        AdminTaskTypeStaffCommand::Remove { type_id, user_id } => {
+        AdminTaskTypeStaffCommand::Remove {
+            type_id,
+            user_id,
+            lab_id,
+        } => {
             client
-                .remove_admin_task_type_staff(type_id, user_id)
+                .remove_admin_task_type_staff(type_id, user_id, lab_id.as_deref())
                 .await
                 .map_err(admin_operation_error)?;
             match format {
@@ -315,6 +442,18 @@ fn validate_schema_property(
     Ok(())
 }
 
+fn validate_document_type(doc_type: &str) -> anyhow::Result<()> {
+    if VALID_DOCUMENT_TYPES.contains(&doc_type) {
+        Ok(())
+    } else {
+        anyhow::bail!(
+            "Invalid document type '{}'. Must be one of: {}",
+            doc_type,
+            VALID_DOCUMENT_TYPES.join(", ")
+        )
+    }
+}
+
 fn required_non_empty_string(
     obj: &serde_json::Map<String, serde_json::Value>,
     field: &str,
@@ -327,7 +466,7 @@ fn required_non_empty_string(
     Ok(())
 }
 
-fn admin_operation_error(error: BiolabError) -> anyhow::Error {
+fn admin_operation_error(error: ScientexError) -> anyhow::Error {
     if is_permission_error(&error) {
         anyhow::anyhow!("当前账号权限不足，无法执行该 admin 操作: {error}")
     } else {
@@ -335,9 +474,9 @@ fn admin_operation_error(error: BiolabError) -> anyhow::Error {
     }
 }
 
-fn is_permission_error(error: &BiolabError) -> bool {
+fn is_permission_error(error: &ScientexError) -> bool {
     match error {
-        BiolabError::HttpError { status, detail, .. } => {
+        ScientexError::HttpError { status, detail, .. } => {
             matches!(status, 401 | 403)
                 || detail.to_ascii_lowercase().contains("permission")
                 || detail.to_ascii_lowercase().contains("forbidden")
@@ -366,7 +505,7 @@ mod tests {
     }
 
     fn parse_admin(args: &[&str]) -> AdminArgs {
-        let cli = TestCli::try_parse_from(std::iter::once("biolab").chain(args.iter().copied()))
+        let cli = TestCli::try_parse_from(std::iter::once("scitex").chain(args.iter().copied()))
             .expect("admin command should parse");
         match cli.command {
             TestCommand::Admin(args) => args,
@@ -378,9 +517,69 @@ mod tests {
         let args = parse_admin(&["admin", "task-types", "create", "task-type.json"]);
         match args.command {
             AdminCommand::TaskTypes {
-                command: AdminTaskTypesCommand::Create { file },
+                command: AdminTaskTypesCommand::Create { file, .. },
             } => assert_eq!(file, "task-type.json"),
             _ => panic!("expected admin task-types create command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_type_create_with_lab_id() {
+        let args = parse_admin(&[
+            "admin",
+            "task-types",
+            "create",
+            "task-type.json",
+            "--lab-id",
+            "lab-1",
+        ]);
+        match args.command {
+            AdminCommand::TaskTypes {
+                command:
+                    AdminTaskTypesCommand::Create {
+                        file,
+                        sop,
+                        work_order,
+                        lab_id,
+                    },
+            } => {
+                assert_eq!(file, "task-type.json");
+                assert!(sop.is_none());
+                assert!(work_order.is_none());
+                assert_eq!(lab_id.as_deref(), Some("lab-1"));
+            }
+            _ => panic!("expected create command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_type_create_with_sop_and_work_order() {
+        let args = parse_admin(&[
+            "admin",
+            "task-types",
+            "create",
+            "task-type.json",
+            "--sop",
+            "sop.md",
+            "--work-order",
+            "wo.pdf",
+        ]);
+        match args.command {
+            AdminCommand::TaskTypes {
+                command:
+                    AdminTaskTypesCommand::Create {
+                        file,
+                        sop,
+                        work_order,
+                        lab_id,
+                    },
+            } => {
+                assert_eq!(file, "task-type.json");
+                assert_eq!(sop.as_deref(), Some("sop.md"));
+                assert_eq!(work_order.as_deref(), Some("wo.pdf"));
+                assert!(lab_id.is_none());
+            }
+            _ => panic!("expected create command"),
         }
     }
 
@@ -389,8 +588,29 @@ mod tests {
         let args = parse_admin(&["admin", "task-types", "delete", "type-1"]);
         match args.command {
             AdminCommand::TaskTypes {
-                command: AdminTaskTypesCommand::Delete { id },
+                command: AdminTaskTypesCommand::Delete { id, .. },
             } => assert_eq!(id, "type-1"),
+            _ => panic!("expected admin task-types delete command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_type_delete_with_lab_id() {
+        let args = parse_admin(&[
+            "admin",
+            "task-types",
+            "delete",
+            "type-1",
+            "--lab-id",
+            "lab-1",
+        ]);
+        match args.command {
+            AdminCommand::TaskTypes {
+                command: AdminTaskTypesCommand::Delete { id, lab_id },
+            } => {
+                assert_eq!(id, "type-1");
+                assert_eq!(lab_id.as_deref(), Some("lab-1"));
+            }
             _ => panic!("expected admin task-types delete command"),
         }
     }
@@ -402,7 +622,7 @@ mod tests {
             AdminCommand::TaskTypes {
                 command:
                     AdminTaskTypesCommand::Staff {
-                        command: AdminTaskTypeStaffCommand::List { type_id },
+                        command: AdminTaskTypeStaffCommand::List { type_id, .. },
                     },
             } => assert_eq!(type_id, "type-1"),
             _ => panic!("expected admin task-types staff list command"),
@@ -416,7 +636,10 @@ mod tests {
             AdminCommand::TaskTypes {
                 command:
                     AdminTaskTypesCommand::Staff {
-                        command: AdminTaskTypeStaffCommand::Add { type_id, user_id },
+                        command:
+                            AdminTaskTypeStaffCommand::Add {
+                                type_id, user_id, ..
+                            },
                     },
             } => {
                 assert_eq!(type_id, "type-1");
@@ -433,13 +656,170 @@ mod tests {
             AdminCommand::TaskTypes {
                 command:
                     AdminTaskTypesCommand::Staff {
-                        command: AdminTaskTypeStaffCommand::Remove { type_id, user_id },
+                        command:
+                            AdminTaskTypeStaffCommand::Remove {
+                                type_id, user_id, ..
+                            },
                     },
             } => {
                 assert_eq!(type_id, "type-1");
                 assert_eq!(user_id, "user-1");
             }
             _ => panic!("expected admin task-types staff remove command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_type_staff_list_with_lab_id() {
+        let args = parse_admin(&[
+            "admin",
+            "task-types",
+            "staff",
+            "list",
+            "type-1",
+            "--lab-id",
+            "lab-1",
+        ]);
+        match args.command {
+            AdminCommand::TaskTypes {
+                command:
+                    AdminTaskTypesCommand::Staff {
+                        command: AdminTaskTypeStaffCommand::List { type_id, lab_id },
+                    },
+            } => {
+                assert_eq!(type_id, "type-1");
+                assert_eq!(lab_id.as_deref(), Some("lab-1"));
+            }
+            _ => panic!("expected staff list command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_type_list_docs() {
+        let args = parse_admin(&["admin", "task-types", "list-docs", "type-1"]);
+        match args.command {
+            AdminCommand::TaskTypes {
+                command: AdminTaskTypesCommand::ListDocs { type_id, .. },
+            } => assert_eq!(type_id, "type-1"),
+            _ => panic!("expected admin task-types list-docs command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_type_list_docs_with_lab_id() {
+        let args = parse_admin(&[
+            "admin",
+            "task-types",
+            "list-docs",
+            "type-1",
+            "--lab-id",
+            "lab-1",
+        ]);
+        match args.command {
+            AdminCommand::TaskTypes {
+                command: AdminTaskTypesCommand::ListDocs { type_id, lab_id },
+            } => {
+                assert_eq!(type_id, "type-1");
+                assert_eq!(lab_id.as_deref(), Some("lab-1"));
+            }
+            _ => panic!("expected list-docs command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_type_upload_doc() {
+        let args = parse_admin(&[
+            "admin",
+            "task-types",
+            "upload-doc",
+            "type-1",
+            "file.md",
+            "--doc-type",
+            "sop",
+        ]);
+        match args.command {
+            AdminCommand::TaskTypes {
+                command:
+                    AdminTaskTypesCommand::UploadDoc {
+                        type_id,
+                        file,
+                        doc_type,
+                        lab_id,
+                    },
+            } => {
+                assert_eq!(type_id, "type-1");
+                assert_eq!(file, "file.md");
+                assert_eq!(doc_type, "sop");
+                assert!(lab_id.is_none());
+            }
+            _ => panic!("expected upload-doc command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_type_upload_doc_short_flag() {
+        let args = parse_admin(&[
+            "admin",
+            "task-types",
+            "upload-doc",
+            "type-1",
+            "file.md",
+            "-T",
+            "work_order",
+        ]);
+        match args.command {
+            AdminCommand::TaskTypes {
+                command: AdminTaskTypesCommand::UploadDoc { doc_type, .. },
+            } => assert_eq!(doc_type, "work_order"),
+            _ => panic!("expected upload-doc command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_type_delete_doc() {
+        let args = parse_admin(&["admin", "task-types", "delete-doc", "type-1", "doc-1"]);
+        match args.command {
+            AdminCommand::TaskTypes {
+                command:
+                    AdminTaskTypesCommand::DeleteDoc {
+                        type_id,
+                        doc_id,
+                        lab_id,
+                    },
+            } => {
+                assert_eq!(type_id, "type-1");
+                assert_eq!(doc_id, "doc-1");
+                assert!(lab_id.is_none());
+            }
+            _ => panic!("expected delete-doc command"),
+        }
+    }
+
+    #[test]
+    fn parses_task_type_delete_doc_with_lab_id() {
+        let args = parse_admin(&[
+            "admin",
+            "task-types",
+            "delete-doc",
+            "type-1",
+            "doc-1",
+            "--lab-id",
+            "lab-1",
+        ]);
+        match args.command {
+            AdminCommand::TaskTypes {
+                command:
+                    AdminTaskTypesCommand::DeleteDoc {
+                        type_id,
+                        doc_id,
+                        lab_id,
+                    },
+            } => {
+                assert_eq!(type_id, "type-1");
+                assert_eq!(doc_id, "doc-1");
+                assert_eq!(lab_id.as_deref(), Some("lab-1"));
+            }
+            _ => panic!("expected delete-doc command"),
         }
     }
 
@@ -509,5 +889,18 @@ mod tests {
         let err =
             validate_task_type_create_payload(&payload).expect_err("payload should be rejected");
         assert!(err.to_string().contains("unknown field"));
+    }
+
+    #[test]
+    fn validate_document_type_accepts_valid() {
+        assert!(validate_document_type("sop").is_ok());
+        assert!(validate_document_type("work_order").is_ok());
+        assert!(validate_document_type("attachment").is_ok());
+    }
+
+    #[test]
+    fn validate_document_type_rejects_invalid() {
+        let err = validate_document_type("report").expect_err("should be rejected");
+        assert!(err.to_string().contains("report"));
     }
 }

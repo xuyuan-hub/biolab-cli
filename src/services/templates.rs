@@ -1,16 +1,16 @@
 use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
-use crate::client::BiolabClient;
-use crate::errors::BiolabError;
+use crate::client::ScientexClient;
+use crate::errors::ScientexError;
 use crate::services::{path_segment_encode, url_encode};
 use crate::types::Template;
 
-impl BiolabClient {
-    pub async fn list_templates(&self) -> Result<PaginatedList<Template>, BiolabError> {
+impl ScientexClient {
+    pub async fn list_templates(&self) -> Result<PaginatedList<Template>, ScientexError> {
         let resp: serde_json::Value = self.http.get("/order-info-templates/").await?;
         extract_paginated(resp)
     }
 
-    pub async fn get_template(&self, id: &str) -> Result<Template, BiolabError> {
+    pub async fn get_template(&self, id: &str) -> Result<Template, ScientexError> {
         let resp: serde_json::Value = self.http.get(&template_path(id)).await?;
         extract_object(resp)
     }
@@ -18,12 +18,15 @@ impl BiolabClient {
     pub async fn get_default_template(
         &self,
         order_type: Option<&str>,
-    ) -> Result<Template, BiolabError> {
+    ) -> Result<Template, ScientexError> {
         let resp: serde_json::Value = self.http.get(&default_template_path(order_type)).await?;
         extract_object(resp)
     }
 
-    pub async fn create_template(&self, data: &serde_json::Value) -> Result<Template, BiolabError> {
+    pub async fn create_template(
+        &self,
+        data: &serde_json::Value,
+    ) -> Result<Template, ScientexError> {
         let resp: serde_json::Value = self.http.post("/order-info-templates/", data).await?;
         extract_object(resp)
     }
@@ -32,17 +35,17 @@ impl BiolabClient {
         &self,
         id: &str,
         data: &serde_json::Value,
-    ) -> Result<Template, BiolabError> {
+    ) -> Result<Template, ScientexError> {
         let resp: serde_json::Value = self.http.put(&template_path(id), data).await?;
         extract_object(resp)
     }
 
-    pub async fn delete_template(&self, id: &str) -> Result<serde_json::Value, BiolabError> {
+    pub async fn delete_template(&self, id: &str) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.delete(&template_path(id)).await?;
         Ok(envelope_data(resp))
     }
 
-    pub async fn set_default_template(&self, id: &str) -> Result<serde_json::Value, BiolabError> {
+    pub async fn set_default_template(&self, id: &str) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(&set_default_template_path(id), &serde_json::json!({}))

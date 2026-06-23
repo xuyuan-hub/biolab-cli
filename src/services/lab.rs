@@ -1,16 +1,16 @@
 use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
-use crate::client::BiolabClient;
-use crate::errors::BiolabError;
+use crate::client::ScientexClient;
+use crate::errors::ScientexError;
 use crate::services::{empty_body, path_segment_encode, single_field_body};
 use crate::types::{Application, ApprovalRule, Invitation, Lab, LabMember, Order, Stock};
 
-impl BiolabClient {
-    pub async fn get_lab(&self) -> Result<Lab, BiolabError> {
+impl ScientexClient {
+    pub async fn get_lab(&self) -> Result<Lab, ScientexError> {
         let resp: serde_json::Value = self.http.get("/lab").await?;
         extract_object(resp)
     }
 
-    pub async fn create_lab(&self, name: &str) -> Result<Lab, BiolabError> {
+    pub async fn create_lab(&self, name: &str) -> Result<Lab, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post("/lab/create", &single_field_body("name", name))
@@ -18,27 +18,27 @@ impl BiolabClient {
         extract_object(resp)
     }
 
-    pub async fn update_lab(&self, data: &serde_json::Value) -> Result<Lab, BiolabError> {
+    pub async fn update_lab(&self, data: &serde_json::Value) -> Result<Lab, ScientexError> {
         let resp: serde_json::Value = self.http.patch("/lab", data).await?;
         extract_object(resp)
     }
 
-    pub async fn list_lab_orders(&self) -> Result<PaginatedList<Order>, BiolabError> {
+    pub async fn list_lab_orders(&self) -> Result<PaginatedList<Order>, ScientexError> {
         let resp: serde_json::Value = self.http.get(lab_orders_path()).await?;
         extract_paginated(resp)
     }
 
-    pub async fn get_lab_order_stats(&self) -> Result<serde_json::Value, BiolabError> {
+    pub async fn get_lab_order_stats(&self) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.get(lab_order_stats_path()).await?;
         Ok(envelope_data(resp))
     }
 
-    pub async fn list_lab_inventory(&self) -> Result<PaginatedList<Stock>, BiolabError> {
+    pub async fn list_lab_inventory(&self) -> Result<PaginatedList<Stock>, ScientexError> {
         let resp: serde_json::Value = self.http.get(lab_inventory_path()).await?;
         extract_paginated(resp)
     }
 
-    pub async fn list_lab_members(&self) -> Result<PaginatedList<LabMember>, BiolabError> {
+    pub async fn list_lab_members(&self) -> Result<PaginatedList<LabMember>, ScientexError> {
         let resp: serde_json::Value = self.http.get("/lab/members").await?;
         extract_paginated(resp)
     }
@@ -47,7 +47,7 @@ impl BiolabClient {
         &self,
         user_id: &str,
         role: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .patch(&member_path(user_id), &single_field_body("role", role))
@@ -55,7 +55,7 @@ impl BiolabClient {
         Ok(envelope_data(resp))
     }
 
-    pub async fn remove_member(&self, user_id: &str) -> Result<serde_json::Value, BiolabError> {
+    pub async fn remove_member(&self, user_id: &str) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.delete(&member_path(user_id)).await?;
         Ok(envelope_data(resp))
     }
@@ -64,7 +64,7 @@ impl BiolabClient {
         &self,
         email: &str,
         role: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post("/lab/invite", &invite_body(email, role))
@@ -72,7 +72,7 @@ impl BiolabClient {
         Ok(envelope_data(resp))
     }
 
-    pub async fn list_invitations(&self) -> Result<PaginatedList<Invitation>, BiolabError> {
+    pub async fn list_invitations(&self) -> Result<PaginatedList<Invitation>, ScientexError> {
         let resp: serde_json::Value = self.http.get("/lab/invitations").await?;
         extract_paginated(resp)
     }
@@ -80,7 +80,7 @@ impl BiolabClient {
     pub async fn accept_invitation(
         &self,
         invitation_id: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(
@@ -94,7 +94,7 @@ impl BiolabClient {
     pub async fn decline_invitation(
         &self,
         invitation_id: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(
@@ -109,7 +109,7 @@ impl BiolabClient {
         &self,
         lab_id: &str,
         role: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(&join_lab_path(lab_id), &single_field_body("role", role))
@@ -117,7 +117,7 @@ impl BiolabClient {
         Ok(envelope_data(resp))
     }
 
-    pub async fn list_applications(&self) -> Result<PaginatedList<Application>, BiolabError> {
+    pub async fn list_applications(&self) -> Result<PaginatedList<Application>, ScientexError> {
         let resp: serde_json::Value = self.http.get("/lab/applications").await?;
         extract_paginated(resp)
     }
@@ -125,7 +125,7 @@ impl BiolabClient {
     pub async fn approve_application(
         &self,
         app_id: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(&application_action_path(app_id, "approve"), &empty_body())
@@ -133,7 +133,10 @@ impl BiolabClient {
         Ok(envelope_data(resp))
     }
 
-    pub async fn reject_application(&self, app_id: &str) -> Result<serde_json::Value, BiolabError> {
+    pub async fn reject_application(
+        &self,
+        app_id: &str,
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(&application_action_path(app_id, "reject"), &empty_body())
@@ -141,7 +144,7 @@ impl BiolabClient {
         Ok(envelope_data(resp))
     }
 
-    pub async fn list_approval_rules(&self) -> Result<PaginatedList<ApprovalRule>, BiolabError> {
+    pub async fn list_approval_rules(&self) -> Result<PaginatedList<ApprovalRule>, ScientexError> {
         let resp: serde_json::Value = self.http.get("/lab/approval-rules").await?;
         extract_paginated(resp)
     }
@@ -149,7 +152,7 @@ impl BiolabClient {
     pub async fn add_approval_rule(
         &self,
         data: &serde_json::Value,
-    ) -> Result<ApprovalRule, BiolabError> {
+    ) -> Result<ApprovalRule, ScientexError> {
         let resp: serde_json::Value = self.http.post("/lab/approval-rules", data).await?;
         extract_object(resp)
     }
@@ -157,7 +160,7 @@ impl BiolabClient {
     pub async fn remove_approval_rule(
         &self,
         rule_id: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.delete(&approval_rule_path(rule_id)).await?;
         Ok(envelope_data(resp))
     }

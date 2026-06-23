@@ -7,10 +7,12 @@ use std::{
 use keyring::{Entry, Error as KeyringError};
 
 pub const DEFAULT_BASE_URL: &str = "http://8.136.56.203/api/v1";
-const TOKEN_ENV_VAR: &str = "BIOLAB_TOKEN";
-const INSECURE_TOKEN_FILE_ENV_VAR: &str = "BIOLAB_INSECURE_TOKEN_FILE";
-const TOKEN_FILE_NAME: &str = ".biolab_token";
-const KEYRING_SERVICE: &str = "biolab-cli";
+const TOKEN_ENV_VAR: &str = "SCIENTEX_TOKEN";
+const BASE_URL_ENV_VAR: &str = "SCIENTEX_BASE_URL";
+const INSECURE_TOKEN_FILE_ENV_VAR: &str = "SCIENTEX_INSECURE_TOKEN_FILE";
+const DISABLE_CONTAINER_TOKEN_FILE_ENV_VAR: &str = "SCIENTEX_DISABLE_CONTAINER_TOKEN_FILE";
+const TOKEN_FILE_NAME: &str = ".scitex_token";
+const KEYRING_SERVICE: &str = "scitex-cli";
 const KEYRING_USERNAME: &str = "default";
 
 #[derive(Debug, Clone)]
@@ -22,7 +24,7 @@ pub struct Config {
 impl Config {
     pub fn new() -> Self {
         let base_url =
-            std::env::var("BIOLAB_BASE_URL").unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
+            std::env::var(BASE_URL_ENV_VAR).unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
         let token_path = token_file_path();
         Self {
             base_url,
@@ -56,24 +58,6 @@ impl Config {
             return self.load_token_from_file();
         }
 
-        // 5. Legacy migration: import ~/.biolab_token into the OS keychain once.
-        if let Some(token) = self.load_token_from_file() {
-            match self.save_token_to_keyring(&token) {
-                Ok(()) => {
-                    let _ = fs::remove_file(&self.token_path);
-                    eprintln!("已将旧 token 文件迁移到系统凭据库。");
-                    return Some(token);
-                }
-                Err(e) => {
-                    eprintln!(
-                        "发现旧 token 文件，但无法迁移到系统凭据库: {e}. \
-                         默认不会继续读取明文 token。请重新运行 `biolab login`，\
-                         或在可信环境中显式设置 {INSECURE_TOKEN_FILE_ENV_VAR}=1。"
-                    );
-                }
-            }
-        }
-
         None
     }
 
@@ -105,7 +89,6 @@ impl Config {
             Ok(()) | Err(KeyringError::NoEntry) => {}
             Err(e) => return Err(io::Error::other(e.to_string())),
         }
-        // Also remove legacy file if present
         if self.token_path.exists() {
             fs::remove_file(&self.token_path)
         } else {
@@ -166,9 +149,7 @@ fn token_file_path() -> PathBuf {
 }
 
 fn insecure_token_file_enabled() -> bool {
-    std::env::var(INSECURE_TOKEN_FILE_ENV_VAR)
-        .map(|v| matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
-        .unwrap_or(false)
+    env_flag_enabled(INSECURE_TOKEN_FILE_ENV_VAR)
 }
 
 fn container_file_storage_enabled() -> bool {
@@ -183,7 +164,11 @@ fn running_in_container() -> bool {
 }
 
 fn disable_container_file_storage() -> bool {
-    std::env::var("BIOLAB_DISABLE_CONTAINER_TOKEN_FILE")
+    env_flag_enabled(DISABLE_CONTAINER_TOKEN_FILE_ENV_VAR)
+}
+
+fn env_flag_enabled(name: &str) -> bool {
+    std::env::var(name)
         .map(|v| matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
         .unwrap_or(false)
 }

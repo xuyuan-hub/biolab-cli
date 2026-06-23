@@ -1,10 +1,10 @@
 use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
-use crate::client::BiolabClient;
-use crate::errors::BiolabError;
+use crate::client::ScientexClient;
+use crate::errors::ScientexError;
 use crate::services::{path_segment_encode, url_encode};
 use crate::types::{InventoryItem, Location, Stock, StockOutResponse, StockStats, Transaction};
 
-impl BiolabClient {
+impl ScientexClient {
     pub async fn list_stocks(
         &self,
         name: Option<&str>,
@@ -12,7 +12,7 @@ impl BiolabClient {
         low_stock: bool,
         skip: u32,
         limit: u32,
-    ) -> Result<PaginatedList<Stock>, BiolabError> {
+    ) -> Result<PaginatedList<Stock>, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&list_stocks_path(name, location_id, low_stock, skip, limit))
@@ -28,7 +28,7 @@ impl BiolabClient {
         low_stock: bool,
         skip: u32,
         limit: u32,
-    ) -> Result<PaginatedList<Stock>, BiolabError> {
+    ) -> Result<PaginatedList<Stock>, ScientexError> {
         let path = list_lab_stocks_path(name, location_id, low_stock, skip, limit);
         let resp: serde_json::Value = match lab_id {
             Some(lab_id) => {
@@ -41,7 +41,7 @@ impl BiolabClient {
         extract_paginated(resp)
     }
 
-    pub async fn get_stock(&self, stock_id: &str) -> Result<Stock, BiolabError> {
+    pub async fn get_stock(&self, stock_id: &str) -> Result<Stock, ScientexError> {
         let resp: serde_json::Value = self.http.get(&stock_path(stock_id)).await?;
         extract_object(resp)
     }
@@ -49,12 +49,12 @@ impl BiolabClient {
     pub async fn list_stock_transactions(
         &self,
         stock_id: &str,
-    ) -> Result<PaginatedList<Transaction>, BiolabError> {
+    ) -> Result<PaginatedList<Transaction>, ScientexError> {
         let resp: serde_json::Value = self.http.get(&stock_transactions_path(stock_id)).await?;
         extract_paginated(resp)
     }
 
-    pub async fn get_stock_stats(&self) -> Result<StockStats, BiolabError> {
+    pub async fn get_stock_stats(&self) -> Result<StockStats, ScientexError> {
         let resp: serde_json::Value = self.http.get("/inventory/stats").await?;
         extract_object(resp)
     }
@@ -67,7 +67,7 @@ impl BiolabClient {
         category: Option<&str>,
         supplier: Option<&str>,
         filters: Option<&str>,
-    ) -> Result<PaginatedList<InventoryItem>, BiolabError> {
+    ) -> Result<PaginatedList<InventoryItem>, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&list_items_path(
@@ -77,7 +77,7 @@ impl BiolabClient {
         extract_paginated(resp)
     }
 
-    pub async fn get_item(&self, item_id: &str) -> Result<InventoryItem, BiolabError> {
+    pub async fn get_item(&self, item_id: &str) -> Result<InventoryItem, ScientexError> {
         let resp: serde_json::Value = self.http.get(&item_path(item_id)).await?;
         extract_object(resp)
     }
@@ -85,7 +85,7 @@ impl BiolabClient {
     pub async fn create_item(
         &self,
         data: &serde_json::Value,
-    ) -> Result<InventoryItem, BiolabError> {
+    ) -> Result<InventoryItem, ScientexError> {
         let resp: serde_json::Value = self.http.post("/inventory/items", data).await?;
         extract_object(resp)
     }
@@ -94,17 +94,17 @@ impl BiolabClient {
         &self,
         item_id: &str,
         data: &serde_json::Value,
-    ) -> Result<InventoryItem, BiolabError> {
+    ) -> Result<InventoryItem, ScientexError> {
         let resp: serde_json::Value = self.http.patch(&item_path(item_id), data).await?;
         extract_object(resp)
     }
 
-    pub async fn disable_item(&self, item_id: &str) -> Result<serde_json::Value, BiolabError> {
+    pub async fn disable_item(&self, item_id: &str) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.post(&disable_item_path(item_id), &()).await?;
         Ok(envelope_data(resp))
     }
 
-    pub async fn create_stock(&self, data: &serde_json::Value) -> Result<Stock, BiolabError> {
+    pub async fn create_stock(&self, data: &serde_json::Value) -> Result<Stock, ScientexError> {
         let resp: serde_json::Value = self.http.post("/inventory/stocks/batch", data).await?;
         extract_object(resp)
     }
@@ -116,7 +116,7 @@ impl BiolabClient {
         search: Option<&str>,
         category: Option<&str>,
         filters: Option<&str>,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&inventory_summary_path(
@@ -134,7 +134,7 @@ impl BiolabClient {
         item_id: Option<&str>,
         search: Option<&str>,
         filters: Option<&str>,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&inventory_transactions_path(
@@ -152,7 +152,7 @@ impl BiolabClient {
     pub async fn get_inventory_preferences(
         &self,
         workflow_type: Option<&str>,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&preferences_path(workflow_type.unwrap_or("primer_store")))
@@ -163,7 +163,7 @@ impl BiolabClient {
     pub async fn set_inventory_preferences(
         &self,
         data: &serde_json::Value,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self.http.put("/inventory/preferences", data).await?;
         Ok(envelope_data(resp))
     }
@@ -174,7 +174,7 @@ impl BiolabClient {
         quantity: f64,
         purpose: Option<&str>,
         lab_id: Option<&str>,
-    ) -> Result<Transaction, BiolabError> {
+    ) -> Result<Transaction, ScientexError> {
         let path = checkin_path(stock_id);
         let body = checkin_body(quantity, purpose);
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
@@ -198,7 +198,7 @@ impl BiolabClient {
         part_id: Option<&str>,
         requirement_key: Option<&str>,
         lab_id: Option<&str>,
-    ) -> Result<Transaction, BiolabError> {
+    ) -> Result<Transaction, ScientexError> {
         let path = checkout_path(stock_id);
         let body = checkout_body(
             quantity,
@@ -229,7 +229,7 @@ impl BiolabClient {
         task_id: Option<&str>,
         part_id: Option<&str>,
         requirement_key: Option<&str>,
-    ) -> Result<StockOutResponse, BiolabError> {
+    ) -> Result<StockOutResponse, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(
@@ -254,7 +254,7 @@ impl BiolabClient {
         quantity: f64,
         adjustment_type: &str,
         reason: Option<&str>,
-    ) -> Result<Transaction, BiolabError> {
+    ) -> Result<Transaction, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(
@@ -270,7 +270,7 @@ impl BiolabClient {
         stock_id: &str,
         location_id: Option<&str>,
         reason: Option<&str>,
-    ) -> Result<Stock, BiolabError> {
+    ) -> Result<Stock, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(
@@ -281,7 +281,7 @@ impl BiolabClient {
         extract_object(resp)
     }
 
-    pub async fn list_locations(&self) -> Result<PaginatedList<Location>, BiolabError> {
+    pub async fn list_locations(&self) -> Result<PaginatedList<Location>, ScientexError> {
         let resp: serde_json::Value = self.http.get("/inventory/locations").await?;
         extract_paginated(resp)
     }
@@ -291,7 +291,7 @@ impl BiolabClient {
         name: &str,
         parent_id: Option<&str>,
         lab_id: Option<&str>,
-    ) -> Result<Location, BiolabError> {
+    ) -> Result<Location, ScientexError> {
         let data = create_location_body(name, parent_id);
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
             self.http

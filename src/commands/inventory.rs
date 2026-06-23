@@ -3,7 +3,7 @@ use std::sync::Arc;
 use clap::{Args, Subcommand};
 use serde_json::json;
 
-use crate::client::BiolabClient;
+use crate::client::ScientexClient;
 use crate::config::Config;
 use crate::output::{
     print_paginated_items, print_pagination_metadata, print_result, print_stocks, OutputFormat,
@@ -186,7 +186,7 @@ pub async fn run(
     config: &Arc<Config>,
     format: &OutputFormat,
 ) -> anyhow::Result<()> {
-    let client = BiolabClient::new(Arc::clone(config))?;
+    let client = ScientexClient::new(Arc::clone(config))?;
 
     match &args.command {
         InventoryCommand::List {
@@ -464,7 +464,7 @@ struct InventoryRequirement {
 }
 
 async fn check_inventory_requirements(
-    client: &BiolabClient,
+    client: &ScientexClient,
     requirements: Vec<InventoryRequirement>,
 ) -> anyhow::Result<serde_json::Value> {
     let mut rows = Vec::with_capacity(requirements.len());
@@ -581,7 +581,7 @@ async fn check_inventory_requirements(
 }
 
 async fn resolve_candidate_items(
-    client: &BiolabClient,
+    client: &ScientexClient,
     req: &InventoryRequirement,
 ) -> anyhow::Result<Vec<InventoryItem>> {
     if let Some(item_id) = &req.item_id {
@@ -615,7 +615,7 @@ async fn resolve_candidate_items(
 }
 
 async fn summary_stocks_for_item(
-    client: &BiolabClient,
+    client: &ScientexClient,
     item: &InventoryItem,
     req: &InventoryRequirement,
 ) -> anyhow::Result<Vec<Stock>> {
@@ -870,7 +870,7 @@ mod tests {
     }
 
     fn parse_inventory(args: &[&str]) -> InventoryArgs {
-        let cli = TestCli::try_parse_from(std::iter::once("biolab").chain(args.iter().copied()))
+        let cli = TestCli::try_parse_from(std::iter::once("scitex").chain(args.iter().copied()))
             .expect("inventory command should parse");
         match cli.command {
             TestCommand::Inventory(args) => args,

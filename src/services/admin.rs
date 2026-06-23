@@ -1,32 +1,54 @@
 use crate::api_response::{extract_array, extract_object};
-use crate::client::BiolabClient;
-use crate::errors::BiolabError;
+use crate::client::ScientexClient;
+use crate::errors::ScientexError;
 use crate::services::path_segment_encode;
-use crate::types::{StaffUserInfo, TaskType};
+use crate::types::{StaffUserInfo, TaskType, TaskTypeDocument};
 
-impl BiolabClient {
+impl ScientexClient {
     pub async fn create_admin_task_type(
         &self,
         data: &serde_json::Value,
-    ) -> Result<TaskType, BiolabError> {
-        let resp: serde_json::Value = self.http.post(admin_task_types_path(), data).await?;
+        lab_id: Option<&str>,
+    ) -> Result<TaskType, ScientexError> {
+        let path = admin_task_types_path();
+        let resp: serde_json::Value = if let Some(lab_id) = lab_id {
+            self.http
+                .post_with_headers(&path, data, &[("X-Current-Lab", lab_id)])
+                .await?
+        } else {
+            self.http.post(&path, data).await?
+        };
         extract_object(resp)
     }
 
-    pub async fn delete_admin_task_type(&self, task_type_id: &str) -> Result<(), BiolabError> {
-        self.http
-            .delete_empty(&admin_task_type_path(task_type_id))
-            .await
+    pub async fn delete_admin_task_type(
+        &self,
+        task_type_id: &str,
+        lab_id: Option<&str>,
+    ) -> Result<(), ScientexError> {
+        let path = admin_task_type_path(task_type_id);
+        if let Some(lab_id) = lab_id {
+            self.http
+                .delete_empty_with_headers(&path, &[("X-Current-Lab", lab_id)])
+                .await
+        } else {
+            self.http.delete_empty(&path).await
+        }
     }
 
     pub async fn list_admin_task_type_staff(
         &self,
         task_type_id: &str,
-    ) -> Result<Vec<StaffUserInfo>, BiolabError> {
-        let resp: serde_json::Value = self
-            .http
-            .get(&admin_task_type_staff_path(task_type_id))
-            .await?;
+        lab_id: Option<&str>,
+    ) -> Result<Vec<StaffUserInfo>, ScientexError> {
+        let path = admin_task_type_staff_path(task_type_id);
+        let resp: serde_json::Value = if let Some(lab_id) = lab_id {
+            self.http
+                .get_with_headers(&path, &[("X-Current-Lab", lab_id)])
+                .await?
+        } else {
+            self.http.get(&path).await?
+        };
         extract_array(resp)
     }
 
@@ -34,23 +56,88 @@ impl BiolabClient {
         &self,
         task_type_id: &str,
         user_id: &str,
-    ) -> Result<(), BiolabError> {
-        self.http
-            .post_empty(
-                &admin_task_type_staff_path(task_type_id),
-                &staff_assign_body(user_id),
-            )
-            .await
+        lab_id: Option<&str>,
+    ) -> Result<(), ScientexError> {
+        let path = admin_task_type_staff_path(task_type_id);
+        let body = staff_assign_body(user_id);
+        if let Some(lab_id) = lab_id {
+            self.http
+                .post_empty_with_headers(&path, &body, &[("X-Current-Lab", lab_id)])
+                .await
+        } else {
+            self.http.post_empty(&path, &body).await
+        }
     }
 
     pub async fn remove_admin_task_type_staff(
         &self,
         task_type_id: &str,
         user_id: &str,
-    ) -> Result<(), BiolabError> {
-        self.http
-            .delete_empty(&admin_task_type_staff_user_path(task_type_id, user_id))
-            .await
+        lab_id: Option<&str>,
+    ) -> Result<(), ScientexError> {
+        let path = admin_task_type_staff_user_path(task_type_id, user_id);
+        if let Some(lab_id) = lab_id {
+            self.http
+                .delete_empty_with_headers(&path, &[("X-Current-Lab", lab_id)])
+                .await
+        } else {
+            self.http.delete_empty(&path).await
+        }
+    }
+
+    pub async fn list_admin_task_type_documents(
+        &self,
+        task_type_id: &str,
+        lab_id: Option<&str>,
+    ) -> Result<Vec<TaskTypeDocument>, ScientexError> {
+        let path = admin_task_type_documents_path(task_type_id);
+        let resp: serde_json::Value = if let Some(lab_id) = lab_id {
+            self.http
+                .get_with_headers(&path, &[("X-Current-Lab", lab_id)])
+                .await?
+        } else {
+            self.http.get(&path).await?
+        };
+        extract_array(resp)
+    }
+
+    pub async fn upload_admin_task_type_document(
+        &self,
+        task_type_id: &str,
+        file_path: &str,
+        document_type: &str,
+        lab_id: Option<&str>,
+    ) -> Result<TaskTypeDocument, ScientexError> {
+        let fields = [("document_type", document_type)];
+        let headers = lab_id
+            .map(|id| vec![("X-Current-Lab", id)])
+            .unwrap_or_default();
+        let resp: serde_json::Value = self
+            .http
+            .upload_multipart(
+                &admin_task_type_documents_path(task_type_id),
+                file_path,
+                &fields,
+                &headers,
+            )
+            .await?;
+        extract_object(resp)
+    }
+
+    pub async fn delete_admin_task_type_document(
+        &self,
+        task_type_id: &str,
+        document_id: &str,
+        lab_id: Option<&str>,
+    ) -> Result<(), ScientexError> {
+        let path = admin_task_type_document_path(task_type_id, document_id);
+        if let Some(lab_id) = lab_id {
+            self.http
+                .delete_empty_with_headers(&path, &[("X-Current-Lab", lab_id)])
+                .await
+        } else {
+            self.http.delete_empty(&path).await
+        }
     }
 }
 
@@ -71,6 +158,18 @@ fn admin_task_type_staff_user_path(task_type_id: &str, user_id: &str) -> String 
         "{}/{}",
         admin_task_type_staff_path(task_type_id),
         path_segment_encode(user_id)
+    )
+}
+
+fn admin_task_type_documents_path(task_type_id: &str) -> String {
+    format!("{}/documents", admin_task_type_path(task_type_id))
+}
+
+fn admin_task_type_document_path(task_type_id: &str, document_id: &str) -> String {
+    format!(
+        "{}/{}",
+        admin_task_type_documents_path(task_type_id),
+        path_segment_encode(document_id)
     )
 }
 
@@ -96,6 +195,18 @@ mod tests {
         assert_eq!(
             admin_task_type_staff_user_path("type with space", "user/1"),
             "/task-types/type%20with%20space/staff/user%2F1"
+        );
+    }
+
+    #[test]
+    fn builds_admin_task_type_document_paths() {
+        assert_eq!(
+            admin_task_type_documents_path("type with space"),
+            "/task-types/type%20with%20space/documents"
+        );
+        assert_eq!(
+            admin_task_type_document_path("type with space", "doc/1"),
+            "/task-types/type%20with%20space/documents/doc%2F1"
         );
     }
 

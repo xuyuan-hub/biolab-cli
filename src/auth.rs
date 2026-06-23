@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::config::Config;
 
-const LOGIN_POLL_KEY_ENV_VAR: &str = "BIOLAB_LOGIN_POLL_KEY";
+const LOGIN_POLL_KEY_ENV_VAR: &str = "SCIENTEX_LOGIN_POLL_KEY";
 
 /// Response from POST /feishu/cli-auth.
 #[derive(Deserialize)]
@@ -55,7 +55,7 @@ pub async fn login(config: &Config) -> bool {
         println!("已有 token，尝试验证...");
         if check_status(config).await {
             println!("当前 token 有效，无需重新登录。");
-            println!("如需重新登录，请先执行 `biolab logout`");
+            println!("如需重新登录，请先执行 `scitex logout`");
             return true;
         }
         println!("Token 已过期，开始重新认证...\n");
@@ -74,7 +74,7 @@ pub async fn login(config: &Config) -> bool {
             println!("\n    {}\n", resp.auth_url);
 
             println!("  已启动后台登录轮询，Agent 可先返回认证链接。");
-            println!("  用户授权后 token 会自动保存；稍后运行 `biolab status` 检查结果。");
+            println!("  用户授权后 token 会自动保存；稍后运行 `scitex status` 检查结果。");
             println!("{}\n", "=".repeat(55));
 
             if let Err(e) = spawn_login_poller(&resp.poll_key) {

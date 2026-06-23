@@ -7,9 +7,9 @@ use anyhow::Context;
 use clap::{Args, Subcommand, ValueEnum};
 use serde::Serialize;
 
-use crate::client::BiolabClient;
+use crate::client::ScientexClient;
 use crate::config::Config;
-use crate::errors::BiolabError;
+use crate::errors::ScientexError;
 use crate::output::{
     print_paginated_items, print_pagination_metadata, print_result,
     unique_output_path as unique_download_path, OutputFormat,
@@ -168,7 +168,7 @@ pub async fn run(
     config: &Arc<Config>,
     format: &OutputFormat,
 ) -> anyhow::Result<()> {
-    let client = BiolabClient::new(Arc::clone(config))?;
+    let client = ScientexClient::new(Arc::clone(config))?;
 
     match &args.command {
         TasksCommand::Types {
@@ -326,7 +326,7 @@ pub async fn run(
 }
 
 async fn run_my_tasks(
-    client: &BiolabClient,
+    client: &ScientexClient,
     command: &MyTasksCommand,
     format: &OutputFormat,
 ) -> anyhow::Result<()> {
@@ -657,7 +657,7 @@ fn write_download(document_id: &str, output: Option<&str>, bytes: &[u8]) -> anyh
 }
 
 async fn download_task_result_files(
-    client: &BiolabClient,
+    client: &ScientexClient,
     task: &Task,
     workflow: Option<&WorkflowDetail>,
     output_dir: Option<&str>,
@@ -776,17 +776,21 @@ fn sanitize_path_segment(value: &str) -> String {
 }
 
 async fn get_task_workflow_if_available(
-    client: &BiolabClient,
+    client: &ScientexClient,
     task_id: &str,
 ) -> anyhow::Result<Option<WorkflowDetail>> {
     match client.get_task_workflow(task_id).await {
         Ok(workflow) => Ok(Some(workflow)),
-        Err(BiolabError::HttpError { status: 404, .. }) => Ok(None),
+        Err(ScientexError::HttpError { status: 404, .. }) => Ok(None),
         Err(err) => Err(err.into()),
     }
 }
 
-async fn resolve_is_compute_task(client: &BiolabClient, task: &Task, lab_id: Option<&str>) -> bool {
+async fn resolve_is_compute_task(
+    client: &ScientexClient,
+    task: &Task,
+    lab_id: Option<&str>,
+) -> bool {
     if let Some(task_type_id) = task.task_type_id.as_deref() {
         if let Ok(types) = client.list_lab_task_types(lab_id).await {
             if let Some(task_type) = types.items.iter().find(|item| item.id == task_type_id) {
@@ -906,7 +910,7 @@ struct WorkflowResultsView {
 }
 
 async fn print_workflow_results(
-    client: &BiolabClient,
+    client: &ScientexClient,
     workflow: &WorkflowDetail,
     results: &crate::api_response::PaginatedList<TaskResult>,
     lab_id: Option<&str>,
@@ -932,7 +936,7 @@ async fn print_workflow_results(
 }
 
 async fn build_workflow_part_views(
-    client: &BiolabClient,
+    client: &ScientexClient,
     workflow: &WorkflowDetail,
     results: &[TaskResult],
     lab_id: Option<&str>,
@@ -984,7 +988,7 @@ async fn build_workflow_part_views(
 }
 
 async fn load_task_type_categories(
-    client: &BiolabClient,
+    client: &ScientexClient,
     lab_id: Option<&str>,
 ) -> HashMap<String, String> {
     client
@@ -1001,7 +1005,7 @@ async fn load_task_type_categories(
 }
 
 async fn resolve_part_category(
-    client: &BiolabClient,
+    client: &ScientexClient,
     part: &TaskPart,
     categories: &mut HashMap<String, String>,
 ) -> anyhow::Result<String> {
@@ -1288,7 +1292,7 @@ mod tests {
     }
 
     fn parse_tasks(args: &[&str]) -> TasksArgs {
-        let cli = TestCli::try_parse_from(std::iter::once("biolab").chain(args.iter().copied()))
+        let cli = TestCli::try_parse_from(std::iter::once("scitex").chain(args.iter().copied()))
             .expect("tasks command should parse");
         match cli.command {
             TestCommand::Tasks(args) => args,

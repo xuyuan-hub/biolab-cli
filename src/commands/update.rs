@@ -10,8 +10,8 @@ use crate::commands::skills;
 use crate::output::{print_result, OutputFormat};
 
 const LATEST_RELEASE_API: &str =
-    "https://api.github.com/repos/xuyuan-hub/biolab-cli/releases/latest";
-const USER_AGENT: &str = concat!("biolab-cli/", env!("CARGO_PKG_VERSION"));
+    "https://api.github.com/repos/xuyuan-hub/scitex-cli/releases/latest";
+const USER_AGENT: &str = concat!("scitex-cli/", env!("CARGO_PKG_VERSION"));
 
 #[derive(Args)]
 pub struct UpdateArgs {
@@ -124,18 +124,16 @@ async fn install_latest(global_skills: bool) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    println!(
-        "Updating  v{} → v{}",
-        current_version,
-        latest_version
-    );
+    println!("Updating  v{} → v{}", current_version, latest_version);
 
     let wanted = recommended_asset_names();
     let bin_name = wanted.iter().find(|n| !n.ends_with(".sha256")).copied();
     let sha_name = wanted.iter().find(|n| n.ends_with(".sha256")).copied();
 
-    let bin_name = bin_name.ok_or_else(|| anyhow::anyhow!("no binary asset for current platform"))?;
-    let sha_name = sha_name.ok_or_else(|| anyhow::anyhow!("no sha256 asset for current platform"))?;
+    let bin_name =
+        bin_name.ok_or_else(|| anyhow::anyhow!("no binary asset for current platform"))?;
+    let sha_name =
+        sha_name.ok_or_else(|| anyhow::anyhow!("no sha256 asset for current platform"))?;
 
     let bin_url = release
         .assets
@@ -202,7 +200,11 @@ async fn install_latest(global_skills: bool) -> anyhow::Result<()> {
 fn extract_from_zip(zip_bytes: &[u8]) -> anyhow::Result<Vec<u8>> {
     let cursor = std::io::Cursor::new(zip_bytes);
     let mut archive = zip::ZipArchive::new(cursor)?;
-    let exe_name = if cfg!(windows) { "biolab.exe" } else { "biolab" };
+    let exe_name = if cfg!(windows) {
+        "scitex.exe"
+    } else {
+        "scitex"
+    };
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i)?;
         let name = entry
@@ -286,19 +288,19 @@ fn print_update_report(report: &UpdateReport, format: &OutputFormat) {
 fn recommended_asset_names() -> &'static [&'static str] {
     #[cfg(target_os = "windows")]
     {
-        &["biolab_win.zip", "biolab_win.zip.sha256"]
+        &["scitex_win.zip", "scitex_win.zip.sha256"]
     }
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
-        &["biolab_mac_arm64", "biolab_mac_arm64.sha256"]
+        &["scitex_mac_arm64", "scitex_mac_arm64.sha256"]
     }
     #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
     {
-        &["biolab_mac_amd64", "biolab_mac_amd64.sha256"]
+        &["scitex_mac_amd64", "scitex_mac_amd64.sha256"]
     }
     #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
     {
-        &["biolab_unix", "biolab_unix.sha256"]
+        &["scitex_unix", "scitex_unix.sha256"]
     }
 }
 

@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum BiolabError {
+pub enum ScientexError {
     #[error("HTTP {status} {path}: {detail}")]
     HttpError {
         status: u16,
@@ -10,7 +10,7 @@ pub enum BiolabError {
     },
     #[error("Request failed: {0}")]
     RequestError(#[from] reqwest::Error),
-    #[error("Token not found. Run `biolab login` first.")]
+    #[error("Token not found. Run `scitex login` first.")]
     NotAuthenticated,
     #[error("Parse error: {0}")]
     ParseError(String),

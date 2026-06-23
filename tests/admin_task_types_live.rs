@@ -1,15 +1,15 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use biolab::client::BiolabClient;
-use biolab::config::Config;
+use scitex_cli::client::ScientexClient;
+use scitex_cli::config::Config;
 use serde_json::json;
 
 #[tokio::test]
 #[ignore = "requires a live backend account with admin task type permissions"]
 async fn live_admin_task_type_create_delete() {
-    if std::env::var("BIOLAB_RUN_LIVE_ADMIN_TESTS").as_deref() != Ok("1") {
-        eprintln!("set BIOLAB_RUN_LIVE_ADMIN_TESTS=1 to run the live admin task type test");
+    if std::env::var("SCIENTEX_RUN_LIVE_ADMIN_TESTS").as_deref() != Ok("1") {
+        eprintln!("set SCIENTEX_RUN_LIVE_ADMIN_TESTS=1 to run the live admin task type test");
         return;
     }
 
@@ -22,7 +22,7 @@ async fn live_admin_task_type_create_delete() {
     let payload = json!({
         "key": key,
         "display_name": display_name,
-        "description": "Temporary task type created by biolab-cli live e2e test.",
+        "description": "Temporary task type created by scitex-cli live e2e test.",
         "category": "staff",
         "input_schema": {
             "type": "object",
@@ -45,14 +45,14 @@ async fn live_admin_task_type_create_delete() {
         }
     });
 
-    let client = BiolabClient::new(Arc::new(Config::new()))
-        .expect("live test requires an authenticated biolab CLI token");
+    let client = ScientexClient::new(Arc::new(Config::new()))
+        .expect("live test requires an authenticated scitex CLI token");
     let created = client
-        .create_admin_task_type(&payload)
+        .create_admin_task_type(&payload, None)
         .await
         .expect("admin task type create should succeed against live backend");
 
-    let deleted = client.delete_admin_task_type(&created.id).await;
+    let deleted = client.delete_admin_task_type(&created.id, None).await;
 
     assert_eq!(created.key, payload["key"].as_str().unwrap());
     assert_eq!(
@@ -71,17 +71,17 @@ async fn live_admin_task_type_create_delete() {
 #[tokio::test]
 #[ignore = "requires a live backend account with admin task type permissions"]
 async fn live_admin_task_type_staff_bind_unbind() {
-    if std::env::var("BIOLAB_RUN_LIVE_ADMIN_TESTS").as_deref() != Ok("1") {
-        eprintln!("set BIOLAB_RUN_LIVE_ADMIN_TESTS=1 to run the live admin task type staff test");
+    if std::env::var("SCIENTEX_RUN_LIVE_ADMIN_TESTS").as_deref() != Ok("1") {
+        eprintln!("set SCIENTEX_RUN_LIVE_ADMIN_TESTS=1 to run the live admin task type staff test");
         return;
     }
 
-    let client = BiolabClient::new(Arc::new(Config::new()))
-        .expect("live test requires an authenticated biolab CLI token");
-    let staff_user_id = match std::env::var("BIOLAB_LIVE_STAFF_USER_ID") {
+    let client = ScientexClient::new(Arc::new(Config::new()))
+        .expect("live test requires an authenticated scitex CLI token");
+    let staff_user_id = match std::env::var("SCIENTEX_LIVE_STAFF_USER_ID") {
         Ok(value) if !value.trim().is_empty() => value,
         _ => {
-            eprintln!("BIOLAB_LIVE_STAFF_USER_ID not set; using current authenticated user");
+            eprintln!("SCIENTEX_LIVE_STAFF_USER_ID not set; using current authenticated user");
             client
                 .get_me()
                 .await
@@ -112,31 +112,31 @@ async fn live_admin_task_type_staff_bind_unbind() {
     });
 
     let created = client
-        .create_admin_task_type(&payload)
+        .create_admin_task_type(&payload, None)
         .await
         .expect("admin task type create should succeed against live backend");
 
     let assign_result = client
-        .assign_admin_task_type_staff(&created.id, &staff_user_id)
+        .assign_admin_task_type_staff(&created.id, &staff_user_id, None)
         .await;
     let staff_after_assign_result = if assign_result.is_ok() {
-        client.list_admin_task_type_staff(&created.id).await
+        client.list_admin_task_type_staff(&created.id, None).await
     } else {
         Ok(Vec::new())
     };
     let remove_result = if assign_result.is_ok() {
         client
-            .remove_admin_task_type_staff(&created.id, &staff_user_id)
+            .remove_admin_task_type_staff(&created.id, &staff_user_id, None)
             .await
     } else {
         Ok(())
     };
     let staff_after_remove_result = if assign_result.is_ok() && remove_result.is_ok() {
-        client.list_admin_task_type_staff(&created.id).await
+        client.list_admin_task_type_staff(&created.id, None).await
     } else {
         Ok(Vec::new())
     };
-    let delete_result = client.delete_admin_task_type(&created.id).await;
+    let delete_result = client.delete_admin_task_type(&created.id, None).await;
 
     assert!(
         assign_result.is_ok(),

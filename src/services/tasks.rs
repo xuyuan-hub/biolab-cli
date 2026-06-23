@@ -1,20 +1,20 @@
 use crate::api_response::{envelope_data, extract_object, extract_paginated, PaginatedList};
-use crate::client::BiolabClient;
-use crate::errors::BiolabError;
+use crate::client::ScientexClient;
+use crate::errors::ScientexError;
 use crate::services::{path_segment_encode, url_encode};
 use crate::types::{
     StaffAssignmentDetail, StaffAssignmentItem, Task, TaskDocument, TaskResult, TaskSummary,
     TaskType, WorkflowDetail,
 };
 
-impl BiolabClient {
+impl ScientexClient {
     pub async fn search_task_types(
         &self,
         skip: u32,
         limit: u32,
         search: Option<&str>,
         filters: Option<&str>,
-    ) -> Result<PaginatedList<TaskType>, BiolabError> {
+    ) -> Result<PaginatedList<TaskType>, ScientexError> {
         let path = task_types_path(skip, limit, search, filters);
         let resp: serde_json::Value = self.http.get(&path).await?;
         extract_paginated(resp)
@@ -23,7 +23,7 @@ impl BiolabClient {
     pub async fn list_lab_task_types(
         &self,
         lab_id: Option<&str>,
-    ) -> Result<PaginatedList<TaskType>, BiolabError> {
+    ) -> Result<PaginatedList<TaskType>, ScientexError> {
         let path = lab_task_types_path();
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
             self.http
@@ -40,7 +40,7 @@ impl BiolabClient {
         skip: u32,
         limit: u32,
         lab_id: Option<&str>,
-    ) -> Result<PaginatedList<TaskSummary>, BiolabError> {
+    ) -> Result<PaginatedList<TaskSummary>, ScientexError> {
         let path = lab_tasks_path(skip, limit);
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
             self.http
@@ -56,7 +56,7 @@ impl BiolabClient {
         &self,
         task_id: &str,
         lab_id: Option<&str>,
-    ) -> Result<Task, BiolabError> {
+    ) -> Result<Task, ScientexError> {
         let path = lab_task_path(task_id);
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
             self.http
@@ -72,7 +72,7 @@ impl BiolabClient {
         &self,
         task_id: &str,
         lab_id: Option<&str>,
-    ) -> Result<PaginatedList<TaskDocument>, BiolabError> {
+    ) -> Result<PaginatedList<TaskDocument>, ScientexError> {
         let path = lab_task_documents_path(task_id);
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
             self.http
@@ -88,7 +88,7 @@ impl BiolabClient {
         &self,
         document_id: &str,
         lab_id: Option<&str>,
-    ) -> Result<Vec<u8>, BiolabError> {
+    ) -> Result<Vec<u8>, ScientexError> {
         let path = lab_task_document_download_path(document_id);
         if let Some(lab_id) = lab_id {
             self.http
@@ -102,7 +102,7 @@ impl BiolabClient {
     pub async fn download_task_output_file(
         &self,
         download_url: &str,
-    ) -> Result<Vec<u8>, BiolabError> {
+    ) -> Result<Vec<u8>, ScientexError> {
         self.http.download_absolute_bytes(download_url).await
     }
 
@@ -110,7 +110,7 @@ impl BiolabClient {
         &self,
         task_id: &str,
         lab_id: Option<&str>,
-    ) -> Result<PaginatedList<TaskResult>, BiolabError> {
+    ) -> Result<PaginatedList<TaskResult>, ScientexError> {
         let path = lab_task_results_path(task_id);
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
             self.http
@@ -122,7 +122,7 @@ impl BiolabClient {
         extract_paginated(resp)
     }
 
-    pub async fn create_task(&self, data: &serde_json::Value) -> Result<Task, BiolabError> {
+    pub async fn create_task(&self, data: &serde_json::Value) -> Result<Task, ScientexError> {
         let resp: serde_json::Value = self.http.post(tasks_path(), data).await?;
         extract_object(resp)
     }
@@ -131,7 +131,7 @@ impl BiolabClient {
         &self,
         data: &serde_json::Value,
         lab_id: Option<&str>,
-    ) -> Result<Task, BiolabError> {
+    ) -> Result<Task, ScientexError> {
         let path = lab_tasks_create_path();
         let resp: serde_json::Value = if let Some(lab_id) = lab_id {
             self.http
@@ -148,9 +148,9 @@ impl BiolabClient {
         data: &serde_json::Value,
         file_fields: &[(&str, &str)],
         lab_id: Option<&str>,
-    ) -> Result<Task, BiolabError> {
+    ) -> Result<Task, ScientexError> {
         let payload = serde_json::to_string(data)
-            .map_err(|e| BiolabError::ParseError(format!("Cannot encode task payload: {e}")))?;
+            .map_err(|e| ScientexError::ParseError(format!("Cannot encode task payload: {e}")))?;
         let fields = [("payload", payload)];
         let headers = lab_id
             .map(|lab_id| vec![("X-Current-Lab", lab_id)])
@@ -171,17 +171,17 @@ impl BiolabClient {
         &self,
         task_id: &str,
         data: &serde_json::Value,
-    ) -> Result<Task, BiolabError> {
+    ) -> Result<Task, ScientexError> {
         let resp: serde_json::Value = self.http.patch(&task_path(task_id), data).await?;
         extract_object(resp)
     }
 
-    pub async fn get_task_workflow(&self, task_id: &str) -> Result<WorkflowDetail, BiolabError> {
+    pub async fn get_task_workflow(&self, task_id: &str) -> Result<WorkflowDetail, ScientexError> {
         let resp: serde_json::Value = self.http.get(&task_workflow_path(task_id)).await?;
         extract_object(resp)
     }
 
-    pub async fn get_task_type(&self, task_type_id: &str) -> Result<TaskType, BiolabError> {
+    pub async fn get_task_type(&self, task_type_id: &str) -> Result<TaskType, ScientexError> {
         let resp: serde_json::Value = self.http.get(&task_type_path(task_type_id)).await?;
         extract_object(resp)
     }
@@ -191,7 +191,7 @@ impl BiolabClient {
         task_id: &str,
         file_path: &str,
         field_key: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let path = task_upload_field_path(task_id);
         self.http
             .upload_multipart(&path, file_path, &[("field_key", field_key)], &[])
@@ -204,7 +204,7 @@ impl BiolabClient {
         file_path: &str,
         field_key: &str,
         lab_id: Option<&str>,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let path = lab_task_upload_field_path(task_id);
         let headers = lab_id
             .map(|lab_id| vec![("X-Current-Lab", lab_id)])
@@ -223,7 +223,7 @@ impl BiolabClient {
         &self,
         skip: u32,
         limit: u32,
-    ) -> Result<PaginatedList<StaffAssignmentItem>, BiolabError> {
+    ) -> Result<PaginatedList<StaffAssignmentItem>, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&staff_task_assignments_path(skip, limit))
@@ -234,7 +234,7 @@ impl BiolabClient {
     pub async fn get_my_task_assignment(
         &self,
         assignment_id: &str,
-    ) -> Result<StaffAssignmentDetail, BiolabError> {
+    ) -> Result<StaffAssignmentDetail, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .get(&staff_task_assignment_path(assignment_id))
@@ -246,7 +246,7 @@ impl BiolabClient {
         &self,
         assignment_id: &str,
         status: &str,
-    ) -> Result<serde_json::Value, BiolabError> {
+    ) -> Result<serde_json::Value, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .patch(
@@ -261,7 +261,7 @@ impl BiolabClient {
         &self,
         assignment_id: &str,
         data: &serde_json::Value,
-    ) -> Result<TaskResult, BiolabError> {
+    ) -> Result<TaskResult, ScientexError> {
         let resp: serde_json::Value = self
             .http
             .post(&staff_task_assignment_results_path(assignment_id), data)
@@ -272,7 +272,7 @@ impl BiolabClient {
     pub async fn list_my_task_documents(
         &self,
         task_id: &str,
-    ) -> Result<PaginatedList<TaskDocument>, BiolabError> {
+    ) -> Result<PaginatedList<TaskDocument>, ScientexError> {
         let resp: serde_json::Value = self.http.get(&staff_task_documents_path(task_id)).await?;
         extract_paginated(resp)
     }
@@ -280,7 +280,7 @@ impl BiolabClient {
     pub async fn download_my_task_document(
         &self,
         document_id: &str,
-    ) -> Result<Vec<u8>, BiolabError> {
+    ) -> Result<Vec<u8>, ScientexError> {
         self.http
             .download_bytes(&staff_task_document_download_path(document_id))
             .await
