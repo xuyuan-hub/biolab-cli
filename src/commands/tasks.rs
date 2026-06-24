@@ -149,7 +149,6 @@ pub enum AssignmentStatusArg {
     Pending,
     InProgress,
     Completed,
-    Blocked,
 }
 
 impl AssignmentStatusArg {
@@ -158,7 +157,6 @@ impl AssignmentStatusArg {
             AssignmentStatusArg::Pending => "pending",
             AssignmentStatusArg::InProgress => "in_progress",
             AssignmentStatusArg::Completed => "completed",
-            AssignmentStatusArg::Blocked => "blocked",
         }
     }
 }

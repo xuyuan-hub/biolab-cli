@@ -31,7 +31,7 @@ scitex orders upload-sequencing-excel sequencing.xlsx -f json
 
 ## Schema
 
-Inspect `<BIOLAB_BASE_URL>/openapi.json` before writing order JSON.
+Inspect `<SCIENTEX_BASE_URL>/openapi.json` before writing order JSON.
 
 Relevant schemas:
 

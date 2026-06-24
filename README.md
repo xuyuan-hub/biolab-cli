@@ -6,7 +6,7 @@
 
 The official CLI client for the Scientex lab management system — built for humans and AI Agents. Covers core lab domains including orders, inventory, templates, and lab administration, with AI Agent Skills for zero-setup automated workflows.
 
-[Installation](#installation--quick-start) · [AI Agent Skills](#ai-agent-skills) · [Auth](#authentication) · [Commands](#command-system) · [Output Formats](#output-formats) · [Security](#security--risk-warnings) · [Architecture](#architecture) · [Contributing](#contributing)
+[Installation](#installation--quick-start) · [AI Agent Skills](#ai-agent-skills) · [Project Boundary](#project-boundary) · [Auth](#authentication) · [Commands](#command-system) · [Output Formats](#output-formats) · [Security](#security--risk-warnings) · [Architecture](#architecture) · [Contributing](#contributing)
 
 ## Why scitex-cli?
 
@@ -145,6 +145,25 @@ After installing skills via `npx skills add` or `scitex skills install`, the Age
 
 The Agent skills are installed by the standard `skills` installer. Domain skills point back to `scitex-shared` for auth and OpenAPI schema rules.
 
+## Project Boundary
+
+Scientex is managed as a multi-repository project. The Web repository (`xuyuan-hub/scientex`) is the source of truth for API, database, task state machines, queues, Worker payloads, and Worker output contracts. This repository (`xuyuan-hub/scitex-cli`) is the HTTP-only CLI and Agent skills layer.
+
+Client-side rules:
+
+* Follow the Web OpenAPI contract for paths, DTOs, enums, task payloads, and response shapes.
+* Do not connect directly to PostgreSQL, Procrastinate, Worker filesystems, or deployment services from the CLI.
+* Use `SCIENTEX_*` environment variables in code, docs, and skills. Avoid adding new `BIOLAB_*` names except for explicitly documented legacy compatibility.
+* Do not invent task statuses, assignment statuses, queue names, or Worker `output_data` fields in the client.
+* When a backend API or Worker contract changes, update CLI DTOs, commands, tests, and skills after the Web change is defined.
+
+Recommended cross-repository release order:
+
+1. Update `xuyuan-hub/scientex` first: backend schema/API, migrations, Worker protocol, and OpenAPI.
+2. Update this repository if the CLI or skills are affected.
+3. Run CLI tests and any OpenAPI/contract checks before publishing a CLI release.
+4. Record the compatible Web commit/OpenAPI baseline in release notes for contract-dependent CLI changes.
+
 ## Authentication
 
 | Command | Description |
@@ -282,7 +301,7 @@ This project is licensed under the **MIT License**.
 
 实验管理系统官方 CLI 客户端 —— 为用户和 AI Agent 设计。覆盖订单、库存、信息模板、课题组管理等核心业务领域，内置 AI Agent Skills，支持零配置自动化工作流。
 
-[安装](#安装与快速开始) · [AI Agent Skills](#ai-agent-skills-1) · [认证](#认证) · [命令](#命令系统) · [输出格式](#输出格式) · [安全](#安全与风险提示) · [架构](#架构) · [贡献](#贡献)
+[安装](#安装与快速开始) · [AI Agent Skills](#ai-agent-skills-1) · [项目边界](#项目边界) · [认证](#认证) · [命令](#命令系统) · [输出格式](#输出格式) · [安全](#安全与风险提示) · [架构](#架构) · [贡献](#贡献)
 
 ## 为什么用 scitex-cli？
 
@@ -424,6 +443,25 @@ scitex skills install --global
 | `scitex-users` | 登录状态、当前用户资料、联系人字段、密码修改 |
 
 Agent skills 会由标准 `skills` 安装器一次性安装；领域 skill 会回指 `scitex-shared` 获取认证和 OpenAPI schema 规则。
+
+## 项目边界
+
+Scientex 是三仓库协作项目。Web 仓库（`xuyuan-hub/scientex`）是 API、数据库、任务状态机、队列、Worker payload 和 Worker output contract 的主事实源。本仓库（`xuyuan-hub/scitex-cli`）只负责 HTTP CLI 和 Agent skills。
+
+Client 侧规则：
+
+* 路由、DTO、枚举、任务 payload、响应结构必须跟随 Web OpenAPI。
+* CLI 不直连 PostgreSQL、不调用 Procrastinate、不访问 Worker 文件系统、不承载部署逻辑。
+* 代码、文档和 skills 统一使用 `SCIENTEX_*` 环境变量；除明确历史兼容说明外，不再新增 `BIOLAB_*` 名称。
+* CLI 不自行发明任务状态、assignment 状态、队列名或 Worker `output_data` 字段。
+* 后端 API 或 Worker contract 变化后，再更新 CLI DTO、命令、测试和 skills。
+
+推荐跨仓库发布顺序：
+
+1. 先更新 `xuyuan-hub/scientex`：后端 schema/API、migration、Worker 协议和 OpenAPI。
+2. 如果 CLI 或 skills 受影响，再更新本仓库。
+3. 发布 CLI 前运行 CLI 测试和 OpenAPI/contract 检查。
+4. 对依赖后端 contract 的 CLI 变更，在 release notes 中记录兼容的 Web commit/OpenAPI 基线。
 
 ## 认证
 

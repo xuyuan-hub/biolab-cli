@@ -26,7 +26,7 @@ scitex templates set-default <TEMPLATE_ID> -f json
 
 ## Schema
 
-Inspect `<BIOLAB_BASE_URL>/openapi.json` before writing template JSON.
+Inspect `<SCIENTEX_BASE_URL>/openapi.json` before writing template JSON.
 
 Relevant schemas:
 

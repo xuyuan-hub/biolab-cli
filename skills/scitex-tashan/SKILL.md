@@ -47,7 +47,7 @@ scitex project tashan planting create-harvest <ORDER_ID> '<JSON>' -f json
 
 ## Schema
 
-Inspect `<BIOLAB_BASE_URL>/openapi.json` before preparing create/update JSON.
+Inspect `<SCIENTEX_BASE_URL>/openapi.json` before preparing create/update JSON.
 
 Relevant schemas:
 

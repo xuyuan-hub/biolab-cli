@@ -8,6 +8,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 The system communicates with a FastAPI backend at `http://8.136.56.203/api/v1` using Feishu OAuth for authentication.
 
+## Scientex Multi-Repository Boundary
+
+This repository is the **HTTP-only client** for the larger Scientex project. The governance source is `xuyuan-hub/scientex/docs/Scientex-2026-06-24-三仓库同步治理方案.md`.
+
+Authoritative ownership:
+
+| Concern | Source of truth |
+|---------|-----------------|
+| HTTP API, OpenAPI, request/response schemas | `xuyuan-hub/scientex` backend |
+| Database models and Alembic migrations | `xuyuan-hub/scientex` backend |
+| Task/part/assignment status machines | `xuyuan-hub/scientex` backend |
+| Queue names and Worker payload/output protocol | `xuyuan-hub/scientex` backend + `worker/` deployment assets |
+| CLI commands, DTOs, output formatting, Agent skills | this `scitex-cli` repository |
+
+Client rules:
+
+- Do not add direct database access, SQLModel assumptions, Procrastinate queue calls, Worker filesystem access, or deployment logic to this repository.
+- Treat Web OpenAPI as the contract. When API fields, paths, enums, task payloads, or output schemas change, update CLI DTOs, command handlers, tests, and skills from the Web contract.
+- Use only `SCIENTEX_*` environment variables in code and skills. Do not introduce new `BIOLAB_*` names except as explicitly documented legacy compatibility.
+- Do not invent task status, assignment status, queue, or Worker output fields in the CLI. Match backend enums and output schemas exactly; unsupported values should be rejected or omitted client-side.
+- For compute tasks, the CLI creates/reads tasks through HTTP only. It must not assume how Worker executes jobs beyond the documented `output_data` contract returned by the API.
+- Cross-repository changes must be sequenced as: Web contract/migration first, then CLI adaptation and tests, then CLI release. Record the compatible Web commit/OpenAPI baseline in the change notes when a CLI change depends on a backend change.
+
 ## Common Commands
 
 ```bash

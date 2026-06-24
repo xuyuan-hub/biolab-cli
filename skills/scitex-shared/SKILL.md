@@ -34,10 +34,10 @@ If `login` prints an authorization URL, send that exact URL to the user and wait
 
 Token lookup order:
 
-1. `BIOLAB_TOKEN`
+1. `SCIENTEX_TOKEN`
 2. container-local token file when running in Docker/K8s
 3. OS keychain
-4. explicit plaintext fallback only when `BIOLAB_INSECURE_TOKEN_FILE=1`
+4. explicit plaintext fallback only when `SCIENTEX_INSECURE_TOKEN_FILE=1`
 
 Do not print tokens or secrets.
 
@@ -48,10 +48,10 @@ For any create/update JSON payload, inspect the backend OpenAPI schema before ch
 Default schema URL:
 
 ```text
-<BIOLAB_BASE_URL>/openapi.json
+<SCIENTEX_BASE_URL>/openapi.json
 ```
 
-If `BIOLAB_BASE_URL` is unset, use the CLI default base URL.
+If `SCIENTEX_BASE_URL` is unset, use the CLI default base URL.
 
 Do not invent CLI commands for backend endpoints that `scitex <domain> --help` does not expose.
 

@@ -24,7 +24,7 @@ scitex logout
 
 ## Schema
 
-Inspect `<BIOLAB_BASE_URL>/openapi.json` before updating user fields.
+Inspect `<SCIENTEX_BASE_URL>/openapi.json` before updating user fields.
 
 Relevant schemas:
 

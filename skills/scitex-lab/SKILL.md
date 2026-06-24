@@ -36,7 +36,7 @@ scitex lab remove-rule <RULE_ID> -f json
 
 ## Schema
 
-Inspect `<BIOLAB_BASE_URL>/openapi.json` before preparing lab JSON or role changes.
+Inspect `<SCIENTEX_BASE_URL>/openapi.json` before preparing lab JSON or role changes.
 
 Relevant schemas:
 
