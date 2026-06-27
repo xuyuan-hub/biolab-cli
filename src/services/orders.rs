@@ -33,7 +33,7 @@ impl ScientexClient {
         &self,
         order: &serde_json::Value,
     ) -> Result<Order, ScientexError> {
-        let resp: serde_json::Value = self.http.post("/orders/primer", order).await?;
+        let resp: serde_json::Value = self.http.post("/tasks/submit/primer-synthesis", order).await?;
         extract_object(resp)
     }
 
@@ -41,7 +41,7 @@ impl ScientexClient {
         &self,
         order: &serde_json::Value,
     ) -> Result<Order, ScientexError> {
-        let resp: serde_json::Value = self.http.post("/orders/sequencing", order).await?;
+        let resp: serde_json::Value = self.http.post("/tasks/submit/sanger-sequencing", order).await?;
         extract_object(resp)
     }
 
